@@ -1,17 +1,15 @@
 import React, { useMemo } from 'react';
 import { calculate1RM, calculateVolume } from '../utils/analytics';
-import { Line, Bar } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { Activity, Scale, Zap, Info, Flame, Target, Utensils, Award } from 'lucide-react';
 import {
-    Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler
+    Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, Filler
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, Filler);
 
 const ProgressReports = ({ history, profile }) => {
-    const sortedHistory = useMemo(() => [...history].sort((a, b) => new Date(a.date) - new Date(b.date)), [history]);
-
     // TRAINING INSIGHTS LOGIC
     const trainingInsights = useMemo(() => {
         if (!profile) return null;
@@ -62,31 +60,6 @@ const ProgressReports = ({ history, profile }) => {
         };
     }, [history, profile]);
 
-    const getExerciseData = (exId) => {
-        const data = sortedHistory
-            .map(s => {
-                const ex = s.exercises.find(e => e.id === exId || e.syncWith === exId);
-                if (!ex) return null;
-                const maxRM = ex.sets.length > 0 ? Math.max(...ex.sets.map(set => calculate1RM(set.weight, set.reps))) : 0;
-                return { date: format(new Date(s.date), 'MMM dd'), val: maxRM };
-            })
-            .filter(d => d !== null && d.val > 0);
-
-        return {
-            labels: data.map(d => d.date),
-            datasets: [{
-                label: '1RM (kg)',
-                data: data.map(d => d.val),
-                borderColor: 'var(--accent-color)',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: 'var(--accent-color)',
-                pointBorderColor: '#fff',
-                pointHoverRadius: 6
-            }]
-        };
-    };
 
     const getMuscleChartData = () => {
         const labels = Object.keys(trainingInsights?.muscleVolumes || {});
