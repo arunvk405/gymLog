@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DEFAULT_PROGRAM } from '../data/program';
 import { saveWorkout } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
-import { Check, X, Loader2, Plus, CheckCircle2 } from 'lucide-react';
+import { Check, ArrowLeft, Loader2, Plus, CheckCircle2 } from 'lucide-react';
 
 const WorkoutLogger = ({ onFinish, onCancel, dayIndex, history }) => {
     const { user } = useAuth();
@@ -100,12 +100,18 @@ const WorkoutLogger = ({ onFinish, onCancel, dayIndex, history }) => {
 
     return (
         <div className="fade-in" style={{ paddingBottom: '8rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <button className="secondary" style={{ padding: '0.6rem', borderRadius: '50%', display: 'flex' }} onClick={onCancel}>
-                    <X size={20} />
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '1rem 0', marginBottom: '1rem',
+                position: 'sticky', top: 0, zIndex: 50,
+                background: 'var(--bg-color)',
+                borderBottom: '1px solid var(--border-color)'
+            }}>
+                <button className="secondary" style={{ padding: '0.5rem 0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700 }} onClick={onCancel}>
+                    <ArrowLeft size={18} /> Back
                 </button>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{workout.name}</h2>
-                <div style={{ width: '38px' }}></div>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{workout.name}</h2>
+                <div style={{ width: '70px' }}></div>
             </div>
 
             {workout.exercises.map((ex, exIdx) => (
