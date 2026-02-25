@@ -25,7 +25,13 @@ function App() {
     localStorage.setItem('gymlog-theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleTheme = () => {
+    setTheme(prev => {
+      if (prev === 'light') return 'dark';
+      if (prev === 'dark') return 'vibe';
+      return 'light';
+    });
+  };
 
   // Load data when user changes
   useEffect(() => {

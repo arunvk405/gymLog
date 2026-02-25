@@ -1,45 +1,64 @@
 :root {
-  /* LIGHT THEME (High Contrast & Minimal) */
-  --bg-color: #f8fafc;
-  --panel-color: #ffffff;
+  /* PREMIUM LIGHT (Soft & Minimal) */
+  --bg-color: #f1f5f9;
+  /* Slate 100 */
+  --panel-color: rgba(255, 255, 255, 0.9);
   --panel-hover: #ffffff;
-  --border-color: #e2e8f0;
+  --border-color: rgba(148, 163, 184, 0.1);
   --text-primary: #0f172a;
-  /* Slate 900 */
-  --text-secondary: #334155;
-  /* Slate 700 - Much more visible */
-  --accent-color: #000000;
-  --accent-secondary: #1e293b;
-  --success-color: #059669;
-  --error-color: #dc2626;
-  --muted-color: #f1f5f9;
-  --nav-bg: rgba(255, 255, 255, 0.85);
-  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --transition-speed: 0.2s;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --card-radius: 24px;
+  --text-secondary: #475569;
+  --accent-color: #6366f1;
+  /* Indigo */
+  --accent-secondary: #4f46e5;
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --muted-color: rgba(226, 232, 240, 0.5);
+  --nav-bg: rgba(241, 245, 249, 0.85);
+  --font-main: 'Outfit', 'Inter', sans-serif;
+  --transition-speed: 0.3s;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.06);
+  --card-radius: 28px;
 }
 
 [data-theme='dark'] {
-  /* DARK THEME (Premium & Deep) */
-  --bg-color: #0a0c10;
-  --panel-color: #161b22;
-  --panel-hover: #1c2128;
-  --border-color: #30363d;
+  /* PREMIUM DARK (Vibrant & Deep) */
+  --bg-color: #0f1014;
+  --panel-color: #1a1c23;
+  --panel-hover: #22252e;
+  --border-color: rgba(255, 255, 255, 0.05);
   --text-primary: #f8fafc;
-  /* Slate 50 */
   --text-secondary: #94a3b8;
-  /* Slate 400 - Clear visibility */
-  --accent-color: #38bdf8;
-  /* Brighter Blue for Dark Mode */
-  --accent-secondary: #0ea5e9;
-  --success-color: #3fb950;
-  --error-color: #f85149;
-  --muted-color: #21262d;
-  --nav-bg: rgba(13, 17, 23, 0.85);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --accent-color: #a855f7;
+  /* Purple */
+  --accent-secondary: #8b5cf6;
+  --success-color: #34d399;
+  --error-color: #fb7185;
+  --muted-color: rgba(255, 255, 255, 0.03);
+  --nav-bg: rgba(15, 16, 20, 0.9);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='vibe'] {
+  /* VIBE MODE (Colorful & Dynamic) */
+  --bg-color: #0d0d0d;
+  --bg-gradient: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+  --panel-color: rgba(255, 255, 255, 0.05);
+  --panel-hover: rgba(255, 255, 255, 0.08);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --accent-color: #00f2ff;
+  /* Cyber Cyan */
+  --accent-secondary: #7000ff;
+  /* Neon Purple */
+  --success-color: #00ff88;
+  --error-color: #ff0055;
+  --muted-color: rgba(255, 255, 255, 0.02);
+  --nav-bg: rgba(13, 13, 13, 0.9);
+  --shadow-sm: 0 4px 12px rgba(0, 242, 255, 0.1);
+  --shadow-md: 0 8px 32px rgba(0, 242, 255, 0.2);
 }
 
 

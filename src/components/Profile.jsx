@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { saveProfile } from '../utils/storage';
-import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2 } from 'lucide-react';
+import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2, Zap } from 'lucide-react';
 import ImageCropper from './ImageCropper';
 
 const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
@@ -121,8 +121,20 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Account</h1>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="secondary" onClick={toggleTheme} style={{ padding: '0.4rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px' }}>
-                        {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                    <button className="secondary" onClick={toggleTheme} style={{
+                        padding: '0.4rem',
+                        width: '42px',
+                        height: '42px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '14px',
+                        background: theme === 'vibe' ? 'linear-gradient(135deg, var(--accent-color), var(--accent-secondary))' : 'var(--muted-color)',
+                        color: theme === 'vibe' ? 'white' : 'var(--text-primary)',
+                        border: theme === 'vibe' ? 'none' : '1px solid var(--border-color)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
+                        {theme === 'light' ? <Moon size={22} /> : theme === 'dark' ? <Zap size={22} /> : <Sun size={22} />}
                     </button>
                     <button className="secondary" onClick={logout} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                         <LogOut size={16} /> Logout
