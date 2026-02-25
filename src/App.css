@@ -100,8 +100,6 @@ h3 {
 }
 
 .panel:hover {
-  background: var(--panel-hover);
-  border-color: var(--accent-color);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
@@ -132,12 +130,13 @@ button.secondary {
 }
 
 button.secondary:hover {
-  background: var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 input,
 select {
-  background-color: white;
+  background-color: var(--panel-color);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   padding: 0.85rem;

@@ -42,11 +42,21 @@ const ProgressReports = ({ history, profile }) => {
         const sortedMuscles = Object.entries(muscleVolumes).sort((a, b) => a[1] - b[1]); // Sort lowest to highest
         const focusArea = sortedMuscles.length > 0 ? sortedMuscles[0][0] : 'No data yet';
 
+        // Calculate muscle maturity based on total volume relative to bodyweight
+        const totalVolume = Object.values(muscleVolumes).reduce((sum, vol) => sum + vol, 0);
+        // This is a simplified calculation. A more robust one might consider training age, specific exercises, etc.
+        // For demonstration, let's scale it to a 0-100 range.
+        // Assuming a typical range for total volume per kg bodyweight, e.g., 500-5000 kg.
+        const volumePerKg = profile.bodyweight > 0 ? totalVolume / profile.bodyweight : 0;
+        const muscleMaturity = Math.min(100, Math.round((volumePerKg / 50) * 100)); // Scale to 0-100, 50 kg/kg is 100%
+
         return {
             tdee,
             bulkTarget,
             protein: Math.round(profile.bodyweight * 2),
             focusArea,
+            muscleVolumes,
+            maturity: muscleMaturity,
             intensity: last30Days.length >= 12 ? 'High' : (last30Days.length >= 8 ? 'Moderate' : 'Developing'),
             status: profile.goal === 'fat_loss' ? 'Shredding' : 'Building'
         };
@@ -74,6 +84,22 @@ const ProgressReports = ({ history, profile }) => {
                 pointBackgroundColor: 'var(--accent-color)',
                 pointBorderColor: '#fff',
                 pointHoverRadius: 6
+            }]
+        };
+    };
+
+    const getMuscleChartData = () => {
+        const labels = Object.keys(trainingInsights?.muscleVolumes || {});
+        const data = Object.values(trainingInsights?.muscleVolumes || {});
+
+        return {
+            labels,
+            datasets: [{
+                label: 'Volume (kg)',
+                data,
+                backgroundColor: 'var(--accent-color)',
+                borderRadius: 8,
+                hoverBackgroundColor: 'var(--accent-secondary)'
             }]
         };
     };
@@ -117,6 +143,40 @@ const ProgressReports = ({ history, profile }) => {
         <div className="fade-in">
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Training Insights</h2>
 
+            {/* ANABOLIC STATUS GUIDE */}
+            <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Flame size={20} color="#ef4444" />
+                        <span style={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '1px', color: 'var(--text-primary)' }}>ANABOLIC STATUS</span>
+                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--accent-color)' }}>LEVEL {Math.floor((trainingInsights?.maturity || 0) / 10) + 1}</span>
+                </div>
+                <div style={{ width: '100%', height: '14px', background: 'var(--muted-color)', borderRadius: '7px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                    <div style={{ width: `${trainingInsights?.maturity || 0}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444, #f59e0b)', transition: 'width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }}></div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
+                    <span>INTENSITY: {trainingInsights?.maturity}%</span>
+                    <span>NEXT TIER: {10 - ((trainingInsights?.maturity || 0) % 10)}% VOL</span>
+                </div>
+                <div style={{ marginTop: '1.2rem', padding: '0.8rem 1rem', background: 'rgba(239, 68, 68, 0.04)', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        <b style={{ color: 'var(--text-primary)' }}>What is this?</b> Analysis of your volume vs body weight. <b style={{ color: 'var(--success-color)' }}>Higher is better</b>—a higher % indicates your system is fully primed for hypertrophy.
+                    </p>
+                </div>
+            </div>
+
+            {/* MUSCLE GROUP DISTRIBUTION */}
+            <div className="panel" style={{ height: '280px', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem' }}>
+                    <Award size={20} color="var(--accent-color)" />
+                    <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase' }}>Volume Distribution</h3>
+                </div>
+                <div style={{ height: '180px' }}>
+                    <Bar data={getMuscleChartData()} options={chartOptions} />
+                </div>
+            </div>
+
             {/* STATUS CARDS */}
             <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
                 <div className="panel" style={{ marginBottom: 0 }}>
@@ -124,46 +184,24 @@ const ProgressReports = ({ history, profile }) => {
                         <Target size={16} color="var(--accent-color)" />
                         <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>FOCUS AREA</span>
                     </div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 900, textTransform: 'uppercase' }}>{trainingInsights?.focusArea}</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-primary)' }}>{trainingInsights?.focusArea}</div>
                     <p style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, margin: '4px 0 0' }}>NEEDS MORE VOLUME</p>
                 </div>
                 <div className="panel" style={{ marginBottom: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                        <Flame size={16} color="#ef4444" />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>DAILY CALORIES</span>
+                        <Zap size={16} color="#f59e0b" />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>PHASE</span>
                     </div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{trainingInsights?.bulkTarget || 0}</div>
-                    <p style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, margin: '4px 0 0' }}>KCAL / DAY</p>
-                </div>
-            </div>
-
-            {/* NUTRITIONAL STRATEGY */}
-            <div className="panel" style={{ background: 'var(--panel-color)', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                    <Utensils size={18} color="var(--accent-color)" />
-                    <h3 style={{ margin: 0, fontSize: '1rem' }}>Nutritional Protocol</h3>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800 }}>PROTEIN</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{trainingInsights?.protein}g</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800 }}>CARBS</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>~{(trainingInsights?.bulkTarget * 0.5 / 4).toFixed(0)}g</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800 }}>FATS</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>~{(trainingInsights?.bulkTarget * 0.25 / 9).toFixed(0)}g</div>
-                    </div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-primary)' }}>{trainingInsights?.status}</div>
+                    <p style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, margin: '4px 0 0' }}>CURRENT GOAL</p>
                 </div>
             </div>
 
             {/* SUMMARY INFO */}
-            <div className="panel" style={{ background: 'var(--muted-color)', border: 'none' }}>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                    You are currently in a <b>{trainingInsights?.status}</b> phase with <b>{trainingInsights?.intensity}</b> intensity.
-                    Based on your logs, increasing weekly sets for <b>{trainingInsights?.focusArea}</b> is recommended for balanced growth.
+            <div className="panel" style={{ background: 'var(--muted-color)', border: 'none', marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                    You are training at <b style={{ color: 'var(--text-primary)' }}>{trainingInsights?.intensity}</b> intensity.
+                    Based on your analytics, specializing in <b style={{ color: 'var(--accent-color)' }}>{trainingInsights?.focusArea}</b> exercises this week will ensure symmetrical muscle development.
                 </p>
             </div>
 
@@ -187,21 +225,6 @@ const ProgressReports = ({ history, profile }) => {
                             {d.day}
                         </div>
                     ))}
-                </div>
-            </div>
-
-            {/* CHARTS */}
-            <div className="panel" style={{ height: '300px' }}>
-                <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Bench Press (1RM)</h3>
-                <div style={{ height: '220px' }}>
-                    <Line data={getExerciseData('bench_press')} options={chartOptions} />
-                </div>
-            </div>
-
-            <div className="panel" style={{ height: '300px' }}>
-                <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Squat Progress</h3>
-                <div style={{ height: '220px' }}>
-                    <Line data={getExerciseData('squat')} options={chartOptions} />
                 </div>
             </div>
         </div>
