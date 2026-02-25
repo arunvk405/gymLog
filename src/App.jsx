@@ -27,6 +27,11 @@ function App() {
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
+  // Scroll to top on tab/view change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab, activeWorkoutDay]);
+
   // Load data when user changes
   useEffect(() => {
     if (user) {
