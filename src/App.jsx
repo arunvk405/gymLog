@@ -54,7 +54,7 @@ function App() {
 
   if (authLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-color)', color: 'white' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
         <Loader2 size={40} className="spin" color="var(--accent-color)" />
         <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Identifying Zen...</p>
       </div>

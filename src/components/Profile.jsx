@@ -1,3 +1,6 @@
+import React, { useState, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { saveProfile } from '../utils/storage';
 import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2 } from 'lucide-react';
 import ImageCropper from './ImageCropper';
 

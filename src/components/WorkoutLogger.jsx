@@ -136,7 +136,7 @@ const WorkoutLogger = ({ onFinish, onCancel, dayIndex, history }) => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.5fr) 2fr 2fr 1fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--muted-color)', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.5fr) 2fr 2fr 1fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8 }}>
                         <span>Set</span>
                         <span style={{ textAlign: 'center' }}>KG</span>
                         <span style={{ textAlign: 'center' }}>Reps</span>
