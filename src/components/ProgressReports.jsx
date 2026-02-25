@@ -2,14 +2,22 @@ import React, { useMemo } from 'react';
 import { calculate1RM, calculateVolume } from '../utils/analytics';
 import { Bar } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
-import { Activity, Scale, Zap, Info, Flame, Target, Utensils, Award } from 'lucide-react';
+import { Activity, Zap, Flame, Target, Award } from 'lucide-react';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, Filler
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, Filler);
 
-const ProgressReports = ({ history, profile }) => {
+const ProgressReports = ({ history, profile, theme }) => {
+    const isDark = theme === 'dark';
+    const textColor = isDark ? '#94a3b8' : '#475569';
+    const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+    // Set Chart.js global defaults for theme
+    ChartJS.defaults.color = textColor;
+    ChartJS.defaults.font.family = "'Inter', -apple-system, sans-serif";
+
     // TRAINING INSIGHTS LOGIC
     const trainingInsights = useMemo(() => {
         if (!profile) return null;
@@ -20,7 +28,6 @@ const ProgressReports = ({ history, profile }) => {
             return (today - date) / (1000 * 60 * 60 * 24) <= 30;
         });
 
-        // Volume by Muscle Group
         const muscleVolumes = {};
         last30Days.forEach(s => {
             s.exercises.forEach(ex => {
@@ -29,7 +36,6 @@ const ProgressReports = ({ history, profile }) => {
             });
         });
 
-        // Nutritional Math
         let bmr = profile.gender === 'male'
             ? 10 * profile.bodyweight + 6.25 * profile.height - 5 * profile.age + 5
             : 10 * profile.bodyweight + 6.25 * profile.height - 5 * profile.age - 161;
@@ -37,16 +43,12 @@ const ProgressReports = ({ history, profile }) => {
         const tdee = Math.round(bmr * 1.5);
         const bulkTarget = tdee + 300;
 
-        const sortedMuscles = Object.entries(muscleVolumes).sort((a, b) => a[1] - b[1]); // Sort lowest to highest
+        const sortedMuscles = Object.entries(muscleVolumes).sort((a, b) => a[1] - b[1]);
         const focusArea = sortedMuscles.length > 0 ? sortedMuscles[0][0] : 'No data yet';
 
-        // Calculate muscle maturity based on total volume relative to bodyweight
         const totalVolume = Object.values(muscleVolumes).reduce((sum, vol) => sum + vol, 0);
-        // This is a simplified calculation. A more robust one might consider training age, specific exercises, etc.
-        // For demonstration, let's scale it to a 0-100 range.
-        // Assuming a typical range for total volume per kg bodyweight, e.g., 500-5000 kg.
         const volumePerKg = profile.bodyweight > 0 ? totalVolume / profile.bodyweight : 0;
-        const muscleMaturity = Math.min(100, Math.round((volumePerKg / 50) * 100)); // Scale to 0-100, 50 kg/kg is 100%
+        const muscleMaturity = Math.min(100, Math.round((volumePerKg / 50) * 100));
 
         return {
             tdee,
@@ -60,7 +62,6 @@ const ProgressReports = ({ history, profile }) => {
         };
     }, [history, profile]);
 
-
     const getMuscleChartData = () => {
         const labels = Object.keys(trainingInsights?.muscleVolumes || {});
         const data = Object.values(trainingInsights?.muscleVolumes || {});
@@ -70,9 +71,9 @@ const ProgressReports = ({ history, profile }) => {
             datasets: [{
                 label: 'Volume (kg)',
                 data,
-                backgroundColor: 'var(--accent-color)',
+                backgroundColor: isDark ? '#38bdf8' : '#2563eb',
                 borderRadius: 8,
-                hoverBackgroundColor: 'var(--accent-secondary)'
+                hoverBackgroundColor: isDark ? '#0ea5e9' : '#1d4ed8'
             }]
         };
     };
@@ -92,9 +93,11 @@ const ProgressReports = ({ history, profile }) => {
             legend: { display: false },
             tooltip: {
                 enabled: true,
-                backgroundColor: '#1e293b',
-                titleColor: '#ffffff',
-                bodyColor: '#ffffff',
+                backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                titleColor: isDark ? '#f8fafc' : '#0f172a',
+                bodyColor: isDark ? '#f8fafc' : '#0f172a',
+                borderColor: isDark ? '#334155' : '#e2e8f0',
+                borderWidth: 1,
                 padding: 12,
                 displayColors: false,
                 cornerRadius: 8
@@ -102,19 +105,19 @@ const ProgressReports = ({ history, profile }) => {
         },
         scales: {
             y: {
-                grid: { color: 'var(--border-color)', drawBorder: false },
-                ticks: { color: 'var(--text-secondary)', font: { size: 10, weight: 'bold' } }
+                grid: { color: gridColor, drawBorder: false },
+                ticks: { color: textColor, font: { size: 10, weight: 'bold' } }
             },
             x: {
                 grid: { display: false },
-                ticks: { color: 'var(--text-secondary)', font: { size: 10, weight: 'bold' } }
+                ticks: { color: textColor, font: { size: 10, weight: 'bold' } }
             }
         }
     };
 
     return (
-        <div className="fade-in">
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>Training Insights</h2>
+        <div className="fade-in" style={{ color: 'var(--text-primary)' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Training Insights</h2>
 
             {/* ANABOLIC STATUS GUIDE */}
             <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
@@ -132,7 +135,7 @@ const ProgressReports = ({ history, profile }) => {
                     <span>INTENSITY: {trainingInsights?.maturity}%</span>
                     <span>NEXT TIER: {10 - ((trainingInsights?.maturity || 0) % 10)}% VOL</span>
                 </div>
-                <div style={{ marginTop: '1.2rem', padding: '0.8rem 1rem', background: 'rgba(239, 68, 68, 0.04)', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ marginTop: '1.2rem', padding: '0.8rem 1rem', background: isDark ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.04)', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}>
                     <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                         <b style={{ color: 'var(--text-primary)' }}>What is this?</b> Analysis of your volume vs body weight. <b style={{ color: 'var(--success-color)' }}>Higher is better</b>—a higher % indicates your system is fully primed for hypertrophy.
                     </p>
@@ -143,7 +146,7 @@ const ProgressReports = ({ history, profile }) => {
             <div className="panel" style={{ height: '280px', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem' }}>
                     <Award size={20} color="var(--accent-color)" />
-                    <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase' }}>Volume Distribution</h3>
+                    <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Volume Distribution</h3>
                 </div>
                 <div style={{ height: '180px' }}>
                     <Bar data={getMuscleChartData()} options={chartOptions} />
@@ -171,7 +174,7 @@ const ProgressReports = ({ history, profile }) => {
             </div>
 
             {/* SUMMARY INFO */}
-            <div className="panel" style={{ background: 'var(--muted-color)', border: 'none', marginBottom: '1.5rem' }}>
+            <div className="panel" style={{ background: isDark ? '#1e293b' : 'var(--muted-color)', border: 'none', marginBottom: '1.5rem' }}>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                     You are training at <b style={{ color: 'var(--text-primary)' }}>{trainingInsights?.intensity}</b> intensity.
                     Based on your analytics, specializing in <b style={{ color: 'var(--accent-color)' }}>{trainingInsights?.focusArea}</b> exercises this week will ensure symmetrical muscle development.
@@ -182,7 +185,7 @@ const ProgressReports = ({ history, profile }) => {
             <div className="panel">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem' }}>
                     <Activity size={20} color="var(--accent-color)" />
-                    <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase' }}>{format(new Date(), 'MMMM')} Training Consistency</h3>
+                    <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-primary)' }}>{format(new Date(), 'MMMM')} Training Consistency</h3>
                 </div>
                 <div className="calendar-grid">
                     {calendarData.map((d, i) => (

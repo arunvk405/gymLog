@@ -87,6 +87,7 @@ h3 {
   font-weight: 800;
   margin-bottom: 1rem;
   letter-spacing: -0.025em;
+  color: var(--text-primary);
 }
 
 .panel {
