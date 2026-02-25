@@ -109,7 +109,7 @@ function App() {
       case 'history':
         return <History history={history} />;
       case 'progress':
-        return <ProgressReports history={history} />;
+        return <ProgressReports history={history} profile={profile} />;
       case 'profile':
         return <Profile profile={profile} setProfile={setProfile} theme={theme} toggleTheme={toggleTheme} />;
       default:
