@@ -75,15 +75,7 @@ const ProgressReports = ({ history, profile }) => {
                 label: '1RM (kg)',
                 data: data.map(d => d.val),
                 borderColor: 'var(--accent-color)',
-                backgroundColor: (context) => {
-                    const chart = context.chart;
-                    const { ctx, chartArea } = chart;
-                    if (!chartArea) return null;
-                    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                    gradient.addColorStop(0, 'rgba(34, 211, 238, 0)');
-                    gradient.addColorStop(1, 'rgba(34, 211, 238, 0.2)');
-                    return gradient;
-                },
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
                 fill: true,
                 tension: 0.4,
                 pointBackgroundColor: 'var(--accent-color)',
@@ -97,24 +89,14 @@ const ProgressReports = ({ history, profile }) => {
         const labels = Object.keys(healthStats?.muscleVolumes || {});
         const data = Object.values(healthStats?.muscleVolumes || {});
 
-        const colors = [
-            'rgb(34, 211, 238)', // Cyan
-            'rgb(232, 121, 249)', // Pink
-            'rgb(248, 113, 113)', // Red
-            'rgb(74, 222, 128)', // Green
-            'rgb(251, 191, 36)', // Amber
-            'rgb(129, 140, 248)'  // Indigo
-        ];
-
         return {
             labels,
             datasets: [{
                 label: 'Volume (kg)',
                 data,
-                backgroundColor: colors.slice(0, data.length),
-                borderRadius: 12,
-                borderSkipped: false,
-                hoverBackgroundColor: colors.map(c => c.replace('rgb', 'rgba').replace(')', ', 0.8)'))
+                backgroundColor: 'var(--accent-color)',
+                borderRadius: 8,
+                hoverBackgroundColor: 'var(--accent-secondary)'
             }]
         };
     };
@@ -133,24 +115,26 @@ const ProgressReports = ({ history, profile }) => {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: 'var(--panel-color)',
-                titleColor: 'var(--text-primary)',
-                bodyColor: 'var(--text-secondary)',
-                borderColor: 'var(--border-color)',
-                borderWidth: 1,
-                padding: 10,
+                enabled: true,
+                backgroundColor: '#1e293b', // Dark slate for universal readability
+                titleColor: '#ffffff',
+                bodyColor: '#ffffff',
+                titleFont: { size: 12, weight: 'bold' },
+                bodyFont: { size: 12 },
+                padding: 12,
                 displayColors: false,
-                cornerRadius: 12
+                cornerRadius: 8,
+                caretSize: 6
             }
         },
         scales: {
             y: {
-                grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
-                ticks: { color: 'var(--text-primary)', font: { size: 11, weight: '700' }, padding: 10 }
+                grid: { color: 'var(--border-color)', drawBorder: false },
+                ticks: { color: 'var(--text-secondary)', font: { size: 10, weight: '600' } }
             },
             x: {
                 grid: { display: false },
-                ticks: { color: 'var(--text-primary)', font: { size: 11, weight: '700' }, padding: 10 }
+                ticks: { color: 'var(--text-secondary)', font: { size: 10, weight: '600' } }
             }
         }
     };
