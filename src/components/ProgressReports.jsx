@@ -47,8 +47,7 @@ const ProgressReports = ({ history, profile, theme }) => {
         const focusArea = sortedMuscles.length > 0 ? sortedMuscles[0][0] : 'No data yet';
 
         const totalVolume = Object.values(muscleVolumes).reduce((sum, vol) => sum + vol, 0);
-        const volumePerKg = profile.bodyweight > 0 ? totalVolume / profile.bodyweight : 0;
-        const muscleMaturity = Math.min(100, Math.round((volumePerKg / 50) * 100));
+        const muscleMaturity = Math.min(100, Math.round((totalVolume / (profile.bodyweight * 100)) * 10));
 
         return {
             tdee,
