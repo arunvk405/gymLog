@@ -153,9 +153,9 @@ const WorkoutLogger = ({ onFinish, onCancel, dayIndex, history }) => {
                                     value={set.weight}
                                     onChange={(e) => updateSet(exIdx, setIdx, 'weight', parseFloat(e.target.value) || 0)}
                                     step="0.5"
-                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'rgba(255,255,255,0.02)' }}
+                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
                                 />
-                                <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--accent-color)', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                                <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
                                     LAST: {set.prevWeight}kg
                                 </div>
                             </div>
@@ -164,7 +164,7 @@ const WorkoutLogger = ({ onFinish, onCancel, dayIndex, history }) => {
                                 type="number"
                                 value={set.reps}
                                 onChange={(e) => updateSet(exIdx, setIdx, 'reps', parseInt(e.target.value) || 0)}
-                                style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'rgba(255,255,255,0.02)' }}
+                                style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
                             />
 
                             <button

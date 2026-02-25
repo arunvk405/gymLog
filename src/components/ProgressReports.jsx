@@ -38,7 +38,16 @@ const ProgressReports = ({ history }) => {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e', font: { size: 10 } } }, x: { grid: { color: '#30363d' }, ticks: { color: '#8b949e', font: { size: 10 } } } }
+        scales: {
+            y: {
+                grid: { color: 'var(--border-color)' },
+                ticks: { color: 'var(--text-secondary)', font: { size: 10, weight: 'bold' } }
+            },
+            x: {
+                grid: { color: 'var(--border-color)' },
+                ticks: { color: 'var(--text-secondary)', font: { size: 10, weight: 'bold' } }
+            }
+        }
     };
 
     return (

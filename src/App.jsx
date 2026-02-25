@@ -18,6 +18,14 @@ function App() {
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('gymlog-theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('gymlog-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   // Load data when user changes
   useEffect(() => {
@@ -103,7 +111,7 @@ function App() {
       case 'progress':
         return <ProgressReports history={history} />;
       case 'profile':
-        return <Profile profile={profile} setProfile={setProfile} />;
+        return <Profile profile={profile} setProfile={setProfile} theme={theme} toggleTheme={toggleTheme} />;
       default:
         return <Dashboard history={history} profile={profile} onStartWorkout={(idx) => setActiveWorkoutDay(idx)} />;
     }

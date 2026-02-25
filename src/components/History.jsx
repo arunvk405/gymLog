@@ -66,7 +66,7 @@ const History = ({ history }) => {
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                                             {ex.sets.map((set, j) => (
-                                                <div key={j} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', border: set.completed ? '1px solid var(--success-color)' : '1px solid transparent' }}>
+                                                <div key={j} style={{ background: 'var(--muted-color)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, border: set.completed ? '1px solid var(--success-color)' : '1px solid var(--border-color)' }}>
                                                     {set.weight}kg × {set.reps}
                                                 </div>
                                             ))}

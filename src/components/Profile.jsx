@@ -1,10 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { saveProfile } from '../utils/storage';
-import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X } from 'lucide-react';
+import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2 } from 'lucide-react';
 import ImageCropper from './ImageCropper';
 
-const Profile = ({ profile, setProfile }) => {
+const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
     const { user, logout } = useAuth();
     const [editing, setEditing] = useState(false);
     const [tempProfile, setTempProfile] = useState(profile);
@@ -93,6 +90,22 @@ const Profile = ({ profile, setProfile }) => {
         setEditing(false);
     };
 
+    const handleShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'GymLog',
+                    text: 'Check out my progress on GymLog! The ultimate workout tracker.',
+                    url: window.location.origin,
+                });
+            } catch (err) {
+                console.error("Share failed:", err);
+            }
+        } else {
+            alert("Sharing is not supported on this browser.");
+        }
+    };
+
     return (
         <div className="fade-in">
             {imageToCrop && (
@@ -104,9 +117,14 @@ const Profile = ({ profile, setProfile }) => {
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Account</h1>
-                <button className="secondary" onClick={logout} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                    <LogOut size={16} /> Logout
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="secondary" onClick={toggleTheme} style={{ padding: '0.4rem', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px' }}>
+                        {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                    </button>
+                    <button className="secondary" onClick={logout} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                        <LogOut size={16} /> Logout
+                    </button>
+                </div>
             </div>
 
             <div className="panel" style={{ textAlign: 'center', position: 'relative' }}>
@@ -159,26 +177,27 @@ const Profile = ({ profile, setProfile }) => {
                     display: 'inline-block',
                     padding: '4px 12px',
                     borderRadius: '20px',
-                    background: 'rgba(88, 166, 255, 0.1)',
-                    color: 'var(--accent-color)',
+                    background: 'var(--muted-color)',
+                    color: 'var(--text-primary)',
                     fontSize: '0.7rem',
                     fontWeight: 800,
                     textTransform: 'uppercase',
-                    letterSpacing: '1px'
+                    letterSpacing: '1px',
+                    border: '1px solid var(--border-color)'
                 }}>
                     {profile.goal?.replace('_', ' ') || 'MUSCLE GAIN'}
                 </div>
             </div>
 
             <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
-                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Body Mass Index</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: bmiCat.color }}>{bmi}</div>
+                <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Body Mass Index</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 900, color: bmiCat.color }}>{bmi}</div>
                     <div style={{ fontSize: '0.65rem', fontWeight: 800, color: bmiCat.color, background: `${bmiCat.color}15`, padding: '2px 8px', borderRadius: '10px' }}>{bmiCat.label.toUpperCase()}</div>
                 </div>
-                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daily Calories</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{nut.calories}</div>
+                <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daily Calories</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)' }}>{nut.calories}</div>
                     <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)' }}>KCAL / DAY</div>
                 </div>
             </div>
@@ -237,43 +256,56 @@ const Profile = ({ profile, setProfile }) => {
                     </div>
                 </div>
             ) : (
-                <button className="secondary" style={{ width: '100%', marginBottom: '1rem' }} onClick={() => setEditing(true)}>Edit Biometrics</button>
+                <>
+                    <button className="secondary" style={{ width: '100%', marginBottom: '1rem', textTransform: 'none' }} onClick={() => setEditing(true)}>Edit Biometrics</button>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                        <button className="secondary" onClick={handleShare} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textTransform: 'none' }}>
+                            <Share2 size={18} /> Share App
+                        </button>
+                    </div>
+
+                    <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                            <ChefHat size={18} color="var(--accent-color)" />
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Nutrition Guide</h3>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                            <div className="stat-box" style={{ background: 'var(--muted-color)', border: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>PROTEIN</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{nut.protein}g</div>
+                            </div>
+                            <div className="stat-box" style={{ background: 'var(--muted-color)', border: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>CARBS</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{nut.carbs}g</div>
+                            </div>
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>FATS</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{nut.fats}g</div>
+                            </div>
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>WATER</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{nut.water}L</div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '1.2rem', padding: '1rem', background: 'var(--muted-color)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-color)', marginBottom: '0.75rem', letterSpacing: '0.5px' }}>MICROS & SUPPLEMENTS</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+                                <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Zinc: <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{nut.zinc}mg</span></div>
+                                <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Magnesium: <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{nut.magnesium}mg</span></div>
+                                <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Vit D3: <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{nut.vitaminD}</span></div>
+                                <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Creatine: <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{nut.creatine}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ textAlign: 'center', marginTop: '3rem', paddingBottom: '2rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '1px' }}>GYMLOG v1.0.2</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '4px' }}>Precision Training Intelligence</div>
+                    </div>
+                </>
             )}
-
-            <div className="panel">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                    <ChefHat size={18} color="var(--accent-color)" />
-                    <h3 style={{ margin: 0, fontSize: '1rem' }}>Nutrition for Lifts</h3>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                    <div className="stat-box" style={{ background: 'rgba(88, 166, 255, 0.05)' }}>
-                        <div className="stat-label">Protein</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{nut.protein}g</div>
-                    </div>
-                    <div className="stat-box" style={{ background: 'rgba(63, 185, 80, 0.05)' }}>
-                        <div className="stat-label">Carbs</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{nut.carbs}g</div>
-                    </div>
-                    <div className="stat-box">
-                        <div className="stat-label">Fats</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{nut.fats}g</div>
-                    </div>
-                    <div className="stat-box">
-                        <div className="stat-label">Water</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{nut.water}L</div>
-                    </div>
-                </div>
-
-                <div style={{ marginTop: '1.2rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '0.5rem' }}>MICROS & SUPPLEMENTS</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
-                        <div style={{ color: 'var(--text-secondary)' }}>Zinc: <span style={{ color: 'white' }}>{nut.zinc}mg</span></div>
-                        <div style={{ color: 'var(--text-secondary)' }}>Magnesium: <span style={{ color: 'white' }}>{nut.magnesium}mg</span></div>
-                        <div style={{ color: 'var(--text-secondary)' }}>Vit D3: <span style={{ color: 'white' }}>{nut.vitaminD}</span></div>
-                        <div style={{ color: 'var(--text-secondary)' }}>Creatine: <span style={{ color: 'white' }}>{nut.creatine}</span></div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };

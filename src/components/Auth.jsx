@@ -120,7 +120,18 @@ const Auth = () => {
                         className="secondary"
                         onClick={handleGoogleLogin}
                         disabled={loading || !!socialLoading}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0.8rem', background: 'white', color: '#000', border: 'none' }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '12px',
+                            padding: '0.8rem',
+                            background: '#fff',
+                            color: '#000',
+                            border: '1px solid var(--border-color)',
+                            textTransform: 'none',
+                            fontWeight: 600
+                        }}
                     >
                         {socialLoading === 'google' ? <Loader2 size={20} className="spin" /> : (
                             <svg width="20" height="20" viewBox="0 0 24 24">
@@ -130,12 +141,12 @@ const Auth = () => {
                                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" />
                             </svg>
                         )}
-                        <span style={{ fontWeight: 600 }}>Continue with Google</span>
+                        <span>Continue with Google</span>
                     </button>
                 </div>
 
                 <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                    <button type="button" className="secondary" onClick={() => setIsLogin(!isLogin)} style={{ border: 'none', background: 'none', fontSize: '0.9rem', color: 'var(--accent-color)', fontWeight: 600 }}>
+                    <button type="button" className="secondary" onClick={() => setIsLogin(!isLogin)} style={{ border: 'none', background: 'none', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, textTransform: 'none' }}>
                         {isLogin ? "Create an Account" : "Back to Login"}
                     </button>
                 </div>

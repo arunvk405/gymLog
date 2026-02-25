@@ -34,11 +34,11 @@ const Onboarding = ({ onComplete }) => {
     return (
         <div className="fade-in" style={{ padding: '2rem 1rem', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                <div style={{ background: 'var(--accent-secondary)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: 'white' }}>
+                <div style={{ background: 'var(--text-primary)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: 'white' }}>
                     <Activity size={35} />
                 </div>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>Final Step</h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>We need a few details to calculate your custom nutrition and strength targets.</p>
+                <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>Create Your Profile</h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Tailor your experience based on your body and goals.</p>
             </div>
 
             <form onSubmit={handleSave} style={{ width: '100%', maxWidth: '400px' }}>

@@ -45,7 +45,7 @@ const Dashboard = ({ history, profile, onStartWorkout }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{ex.name} 1RM</div>
                                 {current1RM > 0 && (
-                                    <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-color)', fontWeight: 700 }}>
+                                    <div style={{ background: 'var(--muted-color)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-color)', fontWeight: 800, border: '1px solid var(--border-color)' }}>
                                         {level}
                                     </div>
                                 )}
