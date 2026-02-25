@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { saveProfile } from '../utils/storage';
-import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2, Zap } from 'lucide-react';
+import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2 } from 'lucide-react';
 import ImageCropper from './ImageCropper';
 
 const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
@@ -129,12 +129,12 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: '14px',
-                        background: theme === 'vibe' ? 'linear-gradient(135deg, var(--accent-color), var(--accent-secondary))' : 'var(--muted-color)',
-                        color: theme === 'vibe' ? 'white' : 'var(--text-primary)',
-                        border: theme === 'vibe' ? 'none' : '1px solid var(--border-color)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        background: 'var(--muted-color)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-color)',
+                        transition: 'all 0.2s ease'
                     }}>
-                        {theme === 'light' ? <Moon size={22} /> : theme === 'dark' ? <Zap size={22} /> : <Sun size={22} />}
+                        {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
                     </button>
                     <button className="secondary" onClick={logout} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                         <LogOut size={16} /> Logout

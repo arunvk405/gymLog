@@ -1,64 +1,42 @@
 :root {
-  /* PREMIUM LIGHT (Vibrant Indigo) */
+  /* PROFESSIONAL LIGHT */
   --bg-color: #f8fafc;
   --panel-color: #ffffff;
-  --panel-hover: #ffffff;
-  --border-color: rgba(99, 102, 241, 0.1);
+  --panel-hover: #f1f5f9;
+  --border-color: #e2e8f0;
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --accent-color: #4f46e5;
-  /* Electric Indigo */
-  --accent-secondary: #818cf8;
+  --accent-color: #2563eb;
+  /* Royal Blue */
+  --accent-secondary: #1d4ed8;
   --success-color: #10b981;
-  --error-color: #f43f5e;
+  --error-color: #ef4444;
   --muted-color: #f1f5f9;
   --nav-bg: rgba(255, 255, 255, 0.9);
-  --font-main: 'Outfit', 'Inter', sans-serif;
-  --transition-speed: 0.3s;
-  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 10px 15px -3px rgba(79, 70, 229, 0.1);
-  --card-radius: 24px;
+  --font-main: 'Inter', -apple-system, sans-serif;
+  --transition-speed: 0.2s;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --card-radius: 16px;
 }
 
 [data-theme='dark'] {
-  /* DARK THEME (Neon Purple) */
-  --bg-color: #0c0d12;
-  --panel-color: #161822;
-  --panel-hover: #1c1f2e;
-  --border-color: rgba(168, 85, 247, 0.15);
+  /* SLEEK DARK */
+  --bg-color: #0f172a;
+  --panel-color: #1e293b;
+  --panel-hover: #334155;
+  --border-color: #334155;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --accent-color: #a855f7;
-  /* Vibrant Purple */
-  --accent-secondary: #c084fc;
+  --accent-color: #38bdf8;
+  /* Brighter Blue for Dark Mode */
+  --accent-secondary: #0ea5e9;
   --success-color: #34d399;
   --error-color: #fb7185;
-  --muted-color: #1e2130;
-  --nav-bg: rgba(12, 13, 18, 0.9);
-  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 20px 25px -5px rgba(168, 85, 247, 0.2);
-}
-
-[data-theme='vibe'] {
-  /* VIBE MODE (Cyberpunk Fusion) */
-  --bg-color: #030712;
-  --panel-color: #0b1120;
-  --panel-hover: #111827;
-  --border-color: rgba(0, 242, 255, 0.2);
-  --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --accent-color: #22d3ee;
-  /* Neon Cyan */
-  --accent-secondary: #e879f9;
-  /* Hot Pink */
-  --success-color: #4ade80;
-  --error-color: #f87171;
-  --muted-color: #111827;
-  --nav-bg: rgba(3, 7, 18, 0.9);
-  --shadow-sm: 0 0 15px rgba(34, 211, 238, 0.15);
-  --shadow-md: 0 0 30px rgba(232, 121, 249, 0.25);
-  --vibe-glow-cyan: 0 0 8px rgba(34, 211, 238, 0.6), 0 0 16px rgba(34, 211, 238, 0.4);
-  --vibe-glow-pink: 0 0 8px rgba(232, 121, 249, 0.6), 0 0 16px rgba(232, 121, 249, 0.4);
+  --muted-color: #0f172a;
+  --nav-bg: rgba(15, 23, 42, 0.9);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
 }
 
 
