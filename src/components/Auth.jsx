@@ -10,7 +10,7 @@ const Auth = () => {
     const [socialLoading, setSocialLoading] = useState(null);
     const [error, setError] = useState('');
 
-    const { login, signup, loginWithGoogle, loginWithApple } = useAuth();
+    const { login, signup, loginWithGoogle } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,26 +45,6 @@ const Auth = () => {
                 setError("Popup blocked! Please allow popups for this site.");
             } else if (err.code === 'auth/operation-not-allowed') {
                 setError("Google login is not enabled in Firebase Console.");
-            } else if (err.code !== 'auth/popup-closed-by-user') {
-                setError(err.message.replace('Firebase: ', ''));
-            }
-        } finally {
-            setSocialLoading(null);
-        }
-    };
-
-    const handleAppleLogin = async () => {
-        if (socialLoading) return;
-        setError('');
-        setSocialLoading('apple');
-        try {
-            await loginWithApple();
-        } catch (err) {
-            console.error("Apple Login Error:", err);
-            if (err.code === 'auth/popup-blocked') {
-                setError("Popup blocked! Please allow popups for this site.");
-            } else if (err.code === 'auth/operation-not-allowed') {
-                setError("Apple login is not enabled in Firebase Console.");
             } else if (err.code !== 'auth/popup-closed-by-user') {
                 setError(err.message.replace('Firebase: ', ''));
             }
@@ -151,21 +131,6 @@ const Auth = () => {
                             </svg>
                         )}
                         <span style={{ fontWeight: 600 }}>Continue with Google</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        className="secondary"
-                        onClick={handleAppleLogin}
-                        disabled={loading || !!socialLoading}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0.8rem', background: '#000', color: '#fff', border: 'none' }}
-                    >
-                        {socialLoading === 'apple' ? <Loader2 size={20} className="spin" /> : (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M17.05 20.28c-.96.95-2.1 2.22-3.41 2.22s-1.83-.84-3.32-.84c-1.48 0-2.04.81-3.32.84s-2.31-1.12-3.36-2.61c-2.13-3.03-3.75-8.56-1.57-12.38c1.08-1.89 3.03-3.08 5.14-3.11c1.61-.03 3.11 1.08 4.1 1.08c.98 0 2.82-1.33 4.74-1.14c.81.03 3.06.33 4.54 2.49c-.12.08-2.71 1.58-2.69 4.73c.02 3.78 3.29 5.04 3.32 5.06c-.03.08-.52 1.78-1.71 3.45M12.03 4.3c-.02-2.13 1.74-4 3.84-4.05c.03 2.5-2.22 4.49-3.84 4.05Z" />
-                            </svg>
-                        )}
-                        <span style={{ fontWeight: 600 }}>Continue with Apple</span>
                     </button>
                 </div>
 

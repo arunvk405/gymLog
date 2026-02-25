@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { saveProfile, uploadProfilePhoto } from '../utils/storage';
-import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check } from 'lucide-react';
+import { saveProfile } from '../utils/storage';
+import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X } from 'lucide-react';
+import ImageCropper from './ImageCropper';
 
 const Profile = ({ profile, setProfile }) => {
     const { user, logout } = useAuth();
     const [editing, setEditing] = useState(false);
     const [tempProfile, setTempProfile] = useState(profile);
     const [uploading, setUploading] = useState(false);
+    const [imageToCrop, setImageToCrop] = useState(null);
     const fileInputRef = useRef(null);
 
     if (!profile) return <div className="fade-in">Loading profile...</div>;
@@ -59,17 +61,27 @@ const Profile = ({ profile, setProfile }) => {
 
     const nut = calculateNutrition();
 
-    const handlePhotoAction = async (e) => {
+    const handlePhotoAction = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            setImageToCrop(reader.result);
+        };
+    };
+
+    const handleCropComplete = async (croppedImageBase64) => {
         setUploading(true);
+        setImageToCrop(null);
         try {
-            const url = await uploadProfilePhoto(file, user.uid);
-            const updated = { ...profile, photoURL: url };
+            const updated = { ...profile, photoURL: croppedImageBase64 };
             await saveProfile(updated, user.uid);
             setProfile(updated);
         } catch (err) {
-            console.error(err);
+            console.error("Save Photo Error:", err);
+            alert("Failed to save cropped photo.");
         } finally {
             setUploading(false);
         }
@@ -83,6 +95,13 @@ const Profile = ({ profile, setProfile }) => {
 
     return (
         <div className="fade-in">
+            {imageToCrop && (
+                <ImageCropper
+                    image={imageToCrop}
+                    onCropComplete={handleCropComplete}
+                    onCancel={() => setImageToCrop(null)}
+                />
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Account</h1>
                 <button className="secondary" onClick={logout} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
@@ -90,35 +109,77 @@ const Profile = ({ profile, setProfile }) => {
                 </button>
             </div>
 
-            <div className="panel" style={{ textAlign: 'center' }}>
-                <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 1rem' }}>
-                    {profile.photoURL ? (
-                        <img src={profile.photoURL} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-color)' }} />
-                    ) : (
-                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'var(--accent-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                            <UserCircle size={60} />
-                        </div>
-                    )}
-                    <label style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--accent-color)', borderRadius: '50%', padding: '6px', cursor: 'pointer', display: 'flex', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-                        {uploading ? <Loader2 size={16} className="spin" /> : <Camera size={16} color="white" />}
+            <div className="panel" style={{ textAlign: 'center', position: 'relative' }}>
+                <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 1.2rem' }}>
+                    <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--accent-color)', background: 'var(--panel-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {uploading ? (
+                            <Loader2 size={40} className="spin" color="var(--accent-color)" />
+                        ) : profile.photoURL ? (
+                            <img
+                                src={profile.photoURL}
+                                alt="Profile"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.style.display = 'none';
+                                    e.target.parentElement.innerHTML = '<div style="color:var(--text-secondary)"><UserCircle size={60} /></div>';
+                                }}
+                            />
+                        ) : (
+                            <div style={{ color: 'var(--text-secondary)' }}>
+                                <UserCircle size={70} />
+                            </div>
+                        )}
+                    </div>
+
+                    <label style={{
+                        position: 'absolute',
+                        bottom: '4px',
+                        right: '4px',
+                        background: 'var(--accent-color)',
+                        borderRadius: '50%',
+                        width: '36px',
+                        height: '36px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                        transition: 'transform 0.2s',
+                        zIndex: 10
+                    }}>
+                        <Camera size={18} color="white" />
                         <input type="file" accept="image/*" onChange={handlePhotoAction} style={{ display: 'none' }} />
                     </label>
                 </div>
-                <div style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.2rem' }}>{profile.displayName || 'Gym Member'}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '4px' }}>{user.email}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 700, textTransform: 'uppercase' }}>{profile.goal?.replace('_', ' ') || 'MUSCLE GAIN'}</div>
+
+                <h2 style={{ margin: '0 0 0.2rem', fontSize: '1.4rem', fontWeight: 800 }}>{profile.displayName || 'Gym Member'}</h2>
+                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user.email}</p>
+                <div style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    background: 'rgba(88, 166, 255, 0.1)',
+                    color: 'var(--accent-color)',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                }}>
+                    {profile.goal?.replace('_', ' ') || 'MUSCLE GAIN'}
+                </div>
             </div>
 
-            <div className="stats-grid" style={{ marginBottom: '1rem' }}>
-                <div className="stat-box">
-                    <span className="stat-label">Body Mass Index</span>
-                    <span className="stat-value" style={{ color: bmiCat.color, margin: '4px 0' }}>{bmi}</span>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: bmiCat.color }}>{bmiCat.label.toUpperCase()}</span>
+            <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
+                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Body Mass Index</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: bmiCat.color }}>{bmi}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: bmiCat.color, background: `${bmiCat.color}15`, padding: '2px 8px', borderRadius: '10px' }}>{bmiCat.label.toUpperCase()}</div>
                 </div>
-                <div className="stat-box">
-                    <span className="stat-label">Daily Calories</span>
-                    <span className="stat-value" style={{ margin: '4px 0' }}>{nut.calories}</span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>KCAL / DAY</span>
+                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daily Calories</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{nut.calories}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)' }}>KCAL / DAY</div>
                 </div>
             </div>
 
@@ -150,7 +211,10 @@ const Profile = ({ profile, setProfile }) => {
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Fitness Goal</label>
-                            <select value={tempProfile.goal || 'muscle_gain'} onChange={(e) => setTempProfile({ ...tempProfile, goal: e.target.value })}>
+                            <select
+                                value={tempProfile.goal || 'muscle_gain'}
+                                onChange={(e) => setTempProfile({ ...tempProfile, goal: e.target.value })}
+                                style={{ padding: '0.8rem', color: 'var(--text-secondary)' }}>
                                 <option value="muscle_gain">Build Muscle</option>
                                 <option value="fat_loss">Fat Loss</option>
                                 <option value="strength">Increase Strength</option>

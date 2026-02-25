@@ -6,7 +6,7 @@ import {
     createUserWithEmailAndPassword,
     signInWithPopup
 } from 'firebase/auth';
-import { auth, googleProvider, appleProvider } from '../firebase';
+import { auth, googleProvider } from '../firebase';
 
 const AuthContext = createContext();
 
@@ -27,10 +27,9 @@ export const AuthProvider = ({ children }) => {
     const logout = () => signOut(auth);
 
     const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
-    const loginWithApple = () => signInWithPopup(auth, appleProvider);
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle, loginWithApple }}>
+        <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle }}>
             {!loading && children}
         </AuthContext.Provider>
     );

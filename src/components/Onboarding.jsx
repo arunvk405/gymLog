@@ -104,7 +104,7 @@ const Onboarding = ({ onComplete }) => {
                         <select
                             value={profile.goal}
                             onChange={(e) => setProfile({ ...profile, goal: e.target.value })}
-                            style={{ padding: '0.8rem' }}
+                            style={{ padding: '0.8rem', color: 'var(--text-secondary)' }}
                         >
                             <option value="muscle_gain">Build Muscle</option>
                             <option value="fat_loss">Fat Loss</option>
