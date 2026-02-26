@@ -2,16 +2,16 @@ import { db, auth, storage } from '../firebase';
 import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-export const saveWorkout = async (workout, uid) => {
+export const saveWorkout = async (workout, uid, workoutDate) => {
     if (!uid) throw new Error("User not authenticated");
+
+    const sessionDate = workoutDate ? new Date(workoutDate + 'T12:00:00') : new Date();
 
     const workoutData = {
         ...workout,
         userId: uid,
-        timestamp: new Date().getTime(),
-        date: new Date().toISOString(),
-        // Since this is a new project, we don't strictly need a version tag to avoid conflicts,
-        // but it's good practice for future schema changes.
+        timestamp: sessionDate.getTime(),
+        date: sessionDate.toISOString(),
         app_version: 'gymlog_v1'
     };
 
@@ -22,6 +22,16 @@ export const saveWorkout = async (workout, uid) => {
         return docRef.id;
     } catch (e) {
         console.error("Firestore Save Error:", e);
+        throw e;
+    }
+};
+
+export const updateWorkout = async (workoutId, data) => {
+    if (!workoutId) throw new Error("No workout ID");
+    try {
+        await setDoc(doc(db, 'workouts', workoutId), data, { merge: true });
+    } catch (e) {
+        console.error("Update workout error:", e);
         throw e;
     }
 };
@@ -134,4 +144,40 @@ export const deleteTemplate = async (templateId, uid) => {
     if (!uid || !templateId) return;
     const { deleteDoc } = await import('firebase/firestore');
     await deleteDoc(doc(db, 'templates', `${uid}_${templateId}`));
+};
+
+// ========== EXERCISE DATABASE ==========
+
+export const seedExercises = async (exercises) => {
+    try {
+        const batch = [];
+        for (const ex of exercises) {
+            batch.push(setDoc(doc(db, 'exercises', ex.id), ex));
+        }
+        await Promise.all(batch);
+        console.log(`Seeded ${exercises.length} exercises to Firestore`);
+        return true;
+    } catch (e) {
+        console.error("Seed exercises error:", e);
+        throw e;
+    }
+};
+
+// In-memory cache so we don't fetch on every render
+let exerciseCache = null;
+
+export const fetchExercises = async () => {
+    if (exerciseCache) return exerciseCache;
+    try {
+        const snap = await getDocs(collection(db, 'exercises'));
+        const exercises = [];
+        snap.forEach(d => exercises.push(d.data()));
+        if (exercises.length > 0) {
+            exerciseCache = exercises.sort((a, b) => a.muscleGroup.localeCompare(b.muscleGroup) || a.name.localeCompare(b.name));
+            return exerciseCache;
+        }
+    } catch (e) {
+        console.error("Fetch exercises error:", e);
+    }
+    return null; // null means "not seeded yet"
 };

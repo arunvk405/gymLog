@@ -1,9 +1,9 @@
 import React from 'react';
 import { TARGETS } from '../data/program';
 import { calculate1RM, getStrengthLevel } from '../utils/analytics';
-import { Dumbbell, Plus, ChevronDown, Trash2 } from 'lucide-react';
+import { Dumbbell, Plus, ChevronDown, Trash2, Pencil } from 'lucide-react';
 
-const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates, onSelectTemplate, onCreateTemplate, onDeleteTemplate }) => {
+const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates, onSelectTemplate, onCreateTemplate, onEditTemplate, onDeleteTemplate }) => {
     if (!profile) return <div className="fade-in">Loading profile...</div>;
 
     const getLatest1RM = (exerciseId) => {
@@ -103,15 +103,24 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                         {programDays.length} training day{programDays.length !== 1 ? 's' : ''} per week
                     </div>
 
-                    {/* Delete custom template */}
+                    {/* Edit / Delete custom template */}
                     {activeTemplate && !activeTemplate.isDefault && (
-                        <button
-                            className="secondary"
-                            onClick={() => { if (window.confirm(`Delete "${activeTemplate.name}"?`)) onDeleteTemplate(activeTemplate.id); }}
-                            style={{ marginTop: '0.6rem', padding: '0.3rem 0.6rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--error-color)', borderColor: 'var(--error-color)' }}
-                        >
-                            <Trash2 size={12} /> Delete
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '0.6rem' }}>
+                            <button
+                                className="secondary"
+                                onClick={() => onEditTemplate(activeTemplate)}
+                                style={{ padding: '0.3rem 0.6rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700 }}
+                            >
+                                <Pencil size={12} /> Edit
+                            </button>
+                            <button
+                                className="secondary"
+                                onClick={() => { if (window.confirm(`Delete "${activeTemplate.name}"?`)) onDeleteTemplate(activeTemplate.id); }}
+                                style={{ padding: '0.3rem 0.6rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--error-color)', borderColor: 'var(--error-color)' }}
+                            >
+                                <Trash2 size={12} /> Delete
+                            </button>
+                        </div>
                     )}
                 </div>
 

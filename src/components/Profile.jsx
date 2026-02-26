@@ -264,6 +264,26 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
                                 <option value="active">Very Active</option>
                             </select>
                         </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block', fontWeight: 700 }}>REST TIME PER SET (SECONDS)</label>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <input
+                                        type="number"
+                                        value={tempProfile.restTimer || 90}
+                                        onChange={(e) => setTempProfile({ ...tempProfile, restTimer: parseInt(e.target.value) || 0 })}
+                                        style={{ padding: '0.8rem', paddingLeft: '2.5rem', fontWeight: 800 }}
+                                    />
+                                    <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-color)' }}>
+                                        <Loader2 size={16} className="spin" />
+                                    </div>
+                                </div>
+                                <div style={{ background: 'var(--muted-color)', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)', fontWeight: 800, fontSize: '0.9rem' }}>
+                                    sec
+                                </div>
+                            </div>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '8px', display: 'block', opacity: 0.8 }}>Timer starts automatically after logging each set.</span>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <button style={{ flex: 1 }} onClick={handleSave}>Save</button>

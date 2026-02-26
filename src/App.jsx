@@ -9,8 +9,9 @@ import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import TemplateEditor from './components/TemplateEditor';
 import { useAuth } from './context/AuthContext';
-import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate } from './utils/storage';
+import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises } from './utils/storage';
 import { DEFAULT_TEMPLATE } from './data/program';
+import { EXERCISE_DATABASE } from './data/exercises';
 import { LayoutDashboard, History as HistoryIcon, TrendingUp, User, Loader2 } from 'lucide-react';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
     localStorage.getItem('gymlog-active-template') || 'default'
   );
   const [editingTemplate, setEditingTemplate] = useState(null); // null = not editing, {} = new, {data} = edit
+  const [exerciseDb, setExerciseDb] = useState([]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -47,15 +49,29 @@ function App() {
       const loadData = async () => {
         setDataLoading(true);
         try {
-          const [h, p, t] = await Promise.all([
+          const [h, p, t, exercises] = await Promise.all([
             fetchHistory(user.uid),
             fetchProfile(user.uid),
-            fetchTemplates(user.uid)
+            fetchTemplates(user.uid),
+            fetchExercises()
           ]);
           setHistory(h || []);
           setProfile(p);
-          // Merge user templates with default
           setTemplates([DEFAULT_TEMPLATE, ...(t || [])]);
+
+          // Seed exercise database if empty
+          if (!exercises || exercises.length === 0) {
+            try {
+              await seedExercises(EXERCISE_DATABASE);
+              setExerciseDb(EXERCISE_DATABASE);
+              console.log('Exercise database seeded successfully');
+            } catch (e) {
+              console.warn('Could not seed exercises, using local fallback');
+              setExerciseDb(EXERCISE_DATABASE);
+            }
+          } else {
+            setExerciseDb(exercises);
+          }
         } catch (err) {
           console.error("Error loading user data:", err);
         } finally {
@@ -128,6 +144,7 @@ function App() {
       return (
         <TemplateEditor
           template={editingTemplate.id ? editingTemplate : null}
+          exerciseDb={exerciseDb}
           onSave={handleSaveTemplate}
           onCancel={() => setEditingTemplate(null)}
         />
@@ -141,6 +158,7 @@ function App() {
         <WorkoutLogger
           programDay={programDay}
           history={history}
+          profile={profile}
           onFinish={async () => {
             setActiveWorkoutDay(null);
             setDataLoading(true);
@@ -185,11 +203,15 @@ function App() {
             templates={templates}
             onSelectTemplate={handleSelectTemplate}
             onCreateTemplate={() => setEditingTemplate({})}
+            onEditTemplate={(t) => setEditingTemplate(t)}
             onDeleteTemplate={handleDeleteTemplate}
           />
         );
       case 'history':
-        return <History history={history} />;
+        return <History history={history} onUpdate={async () => {
+          const h = await fetchHistory(user.uid);
+          setHistory(h || []);
+        }} />;
       case 'progress':
         return <ProgressReports history={history} profile={profile} theme={theme} />;
       case 'profile':
@@ -204,6 +226,7 @@ function App() {
             templates={templates}
             onSelectTemplate={handleSelectTemplate}
             onCreateTemplate={() => setEditingTemplate({})}
+            onEditTemplate={(t) => setEditingTemplate(t)}
             onDeleteTemplate={handleDeleteTemplate}
           />
         );
