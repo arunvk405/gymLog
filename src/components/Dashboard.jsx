@@ -2,6 +2,7 @@ import React from 'react';
 import { TARGETS } from '../data/program';
 import { calculate1RM, getStrengthLevel } from '../utils/analytics';
 import { Dumbbell, Plus, ChevronDown, Trash2, Pencil } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates, onSelectTemplate, onCreateTemplate, onEditTemplate, onDeleteTemplate }) => {
     if (!profile) return <div className="fade-in">Loading profile...</div>;
@@ -115,7 +116,50 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                             </button>
                             <button
                                 className="secondary"
-                                onClick={() => { if (window.confirm(`Delete "${activeTemplate.name}"?`)) onDeleteTemplate(activeTemplate.id); }}
+                                onClick={() => {
+                                    toast((t) => (
+                                        <div style={{ padding: '4px' }}>
+                                            <div style={{ marginBottom: '12px', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                Delete "{activeTemplate.name}"?
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => {
+                                                        onDeleteTemplate(activeTemplate.id);
+                                                        toast.dismiss(t.id);
+                                                    }}
+                                                    style={{
+                                                        background: 'var(--error-color)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        padding: '6px 14px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 800,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    Yes, Delete
+                                                </button>
+                                                <button
+                                                    onClick={() => toast.dismiss(t.id)}
+                                                    style={{
+                                                        background: 'var(--panel-color)',
+                                                        color: 'var(--text-secondary)',
+                                                        border: '1px solid var(--border-color)',
+                                                        padding: '6px 14px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 800,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ), { duration: 5000, position: 'top-center' });
+                                }}
                                 style={{ padding: '0.3rem 0.6rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--error-color)', borderColor: 'var(--error-color)' }}
                             >
                                 <Trash2 size={12} /> Delete

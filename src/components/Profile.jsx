@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { saveProfile } from '../utils/storage';
 import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import ImageCropper from './ImageCropper';
 
 const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
@@ -81,16 +82,21 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
             setProfile(updated);
         } catch (err) {
             console.error("Save Photo Error:", err);
-            alert("Failed to save cropped photo.");
+            toast.error("Failed to save photo");
         } finally {
             setUploading(false);
         }
     };
 
     const handleSave = async () => {
-        await saveProfile(tempProfile, user.uid);
-        setProfile(tempProfile);
-        setEditing(false);
+        try {
+            await saveProfile(tempProfile, user.uid);
+            setProfile(tempProfile);
+            setEditing(false);
+            toast.success("Profile updated!");
+        } catch (err) {
+            toast.error("Failed to update profile");
+        }
     };
 
     const handleShare = async () => {
@@ -105,7 +111,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
                 console.error("Share failed:", err);
             }
         } else {
-            alert("Sharing is not supported on this browser.");
+            toast.error("Sharing is not supported on this browser");
         }
     };
 

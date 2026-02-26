@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { MUSCLE_GROUPS } from '../data/program';
 import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X } from 'lucide-react';
 
@@ -163,11 +164,11 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
     };
 
     const handleSave = () => {
-        if (!name.trim()) { alert('Please enter a template name'); return; }
-        if (days.length === 0) { alert('Add at least one training day'); return; }
+        if (!name.trim()) { toast.error('Please enter a template name'); return; }
+        if (days.length === 0) { toast.error('Add at least one training day'); return; }
         for (let i = 0; i < days.length; i++) {
-            if (!days[i].name.trim()) { alert(`Please name Day ${i + 1}`); return; }
-            if (days[i].exercises.length === 0) { alert(`Day ${i + 1} needs at least one exercise`); return; }
+            if (!days[i].name.trim()) { toast.error(`Please name Day ${i + 1}`); return; }
+            if (days[i].exercises.length === 0) { toast.error(`Day ${i + 1} needs at least one exercise`); return; }
         }
         onSave({
             id: template?.id || `template_${Date.now()}`,

@@ -10,6 +10,7 @@ import Onboarding from './components/Onboarding';
 import TemplateEditor from './components/TemplateEditor';
 import { useAuth } from './context/AuthContext';
 import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises } from './utils/storage';
+import { Toaster, toast } from 'react-hot-toast';
 import { DEFAULT_TEMPLATE } from './data/program';
 import { EXERCISE_DATABASE } from './data/exercises';
 import { LayoutDashboard, History as HistoryIcon, TrendingUp, User, Loader2 } from 'lucide-react';
@@ -49,31 +50,28 @@ function App() {
       const loadData = async () => {
         setDataLoading(true);
         try {
-          const [h, p, t, exercises] = await Promise.all([
-            fetchHistory(user.uid),
-            fetchProfile(user.uid),
-            fetchTemplates(user.uid),
-            fetchExercises()
-          ]);
+          // Fetch data individually to handle partial failures (like permission errors on specific collections)
+          const h = await fetchHistory(user.uid).catch(() => []);
+          const p = await fetchProfile(user.uid).catch(() => null);
+          const t = await fetchTemplates(user.uid).catch(() => []);
+          const exercises = await fetchExercises().catch(() => null);
+
           setHistory(h || []);
           setProfile(p);
           setTemplates([DEFAULT_TEMPLATE, ...(t || [])]);
 
-          // Seed exercise database if empty
-          if (!exercises || exercises.length === 0) {
-            try {
-              await seedExercises(EXERCISE_DATABASE);
-              setExerciseDb(EXERCISE_DATABASE);
-              console.log('Exercise database seeded successfully');
-            } catch (e) {
-              console.warn('Could not seed exercises, using local fallback');
-              setExerciseDb(EXERCISE_DATABASE);
-            }
-          } else {
+          // Use exercises from Firebase if available, otherwise fallback to local DB
+          if (exercises && exercises.length > 0) {
             setExerciseDb(exercises);
+          } else {
+            console.warn('Using local exercise database fallback');
+            setExerciseDb(EXERCISE_DATABASE);
+
+            // Try to seed only if exercises were truly empty (not a permission error)
+            // If fetchExercises returned null, it likely failed or reported failure
           }
         } catch (err) {
-          console.error("Error loading user data:", err);
+          console.error("Critical error loading user data:", err);
         } finally {
           setDataLoading(false);
         }
@@ -110,20 +108,30 @@ function App() {
       setActiveTemplateId(templateData.id);
       localStorage.setItem('gymlog-active-template', templateData.id);
       setEditingTemplate(null);
+      toast.success("Template saved!");
     } catch (err) {
       console.error("Error saving template:", err);
-      alert("Failed to save template: " + err.message);
+      toast.error("Failed to save template");
     }
   };
 
   const handleDeleteTemplate = async (id) => {
+    if (id === 'default' || id === 'template_default') {
+      toast.error("Cannot delete default template");
+      return;
+    }
+
+    const templateToDelete = templates.find(t => t.id === id);
+
     try {
-      await deleteTemplate(id, user.uid);
+      await deleteTemplate(id, user.uid, templateToDelete?._docId);
       setTemplates(prev => prev.filter(t => t.id !== id));
       setActiveTemplateId('default');
       localStorage.setItem('gymlog-active-template', 'default');
+      toast.success("Template deleted");
     } catch (err) {
       console.error("Error deleting template:", err);
+      toast.error("Deletion failed");
     }
   };
 
@@ -235,6 +243,25 @@ function App() {
 
   return (
     <div className="app-container">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: 'var(--panel-color)',
+            color: 'var(--text-primary)',
+            borderRadius: '12px',
+            border: '1px solid var(--border-color)',
+            fontSize: '0.85rem',
+            fontWeight: 700
+          },
+          success: {
+            iconTheme: { primary: 'var(--success-color)', secondary: 'white' }
+          },
+          error: {
+            iconTheme: { primary: 'var(--error-color)', secondary: 'white' }
+          }
+        }}
+      />
       <main>
         {renderContent()}
       </main>

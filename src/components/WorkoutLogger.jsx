@@ -3,6 +3,7 @@ import { saveWorkout } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import { Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown } from 'lucide-react';
 import { format, isToday } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 const WorkoutLogger = ({ onFinish, onCancel, programDay, history, profile }) => {
     const { user } = useAuth();
@@ -139,10 +140,11 @@ const WorkoutLogger = ({ onFinish, onCancel, programDay, history, profile }) => 
         setIsSaving(true);
         try {
             await saveWorkout(workout, user.uid, workoutDate);
+            toast.success("Workout logged!");
             onFinish();
         } catch (err) {
             console.error("Logger Save Error:", err);
-            alert("Failed to save workout to Firebase: " + err.message + "\n\n1. Go to Firebase Console > Build > Firestore Database.\n2. Go to the 'Rules' tab.\n3. Ensure rules allow read/write. For testing, set:\n   allow read, write: if request.auth != null;");
+            toast.error("Failed to save workout");
             setIsSaving(false);
         }
     };

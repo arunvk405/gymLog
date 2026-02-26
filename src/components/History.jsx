@@ -4,6 +4,7 @@ import { updateWorkout } from '../utils/storage';
 import { Download, FileText, ChevronDown, ChevronUp, Calendar, Pencil, Save, X } from 'lucide-react';
 import { calculateVolume } from '../utils/analytics';
 import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 const History = ({ history, onUpdate }) => {
     const [expanded, setExpanded] = useState({});
@@ -46,8 +47,9 @@ const History = ({ history, onUpdate }) => {
             if (onUpdate) onUpdate();
             setEditingId(null);
             setEditData(null);
+            toast.success("Workout updated!");
         } catch (err) {
-            alert('Failed to save: ' + err.message);
+            toast.error("Failed to save changes");
         } finally {
             setSaving(false);
         }

@@ -1,5 +1,5 @@
 import { db, auth, storage } from '../firebase';
-import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const saveWorkout = async (workout, uid, workoutDate) => {
@@ -116,14 +116,29 @@ export const uploadProfilePhoto = async (file, uid) => {
 
 export const saveTemplate = async (template, uid) => {
     if (!uid) throw new Error("User not authenticated");
-    const templateId = template.id || `template_${Date.now()}`;
-    await setDoc(doc(db, 'templates', `${uid}_${templateId}`), {
-        ...template,
-        id: templateId,
-        userId: uid,
-        updatedAt: new Date().toISOString()
+
+    // Create a clean copy without internal metadata like _docId
+    const cleanTemplate = { ...template };
+    Object.keys(cleanTemplate).forEach(key => {
+        if (key.startsWith('_')) delete cleanTemplate[key];
     });
-    return templateId;
+
+    const templateId = cleanTemplate.id || `template_${Date.now()}`;
+    const docId = `${uid}_${templateId}`;
+
+    try {
+        await setDoc(doc(db, 'templates', docId), {
+            ...cleanTemplate,
+            id: templateId,
+            userId: uid,
+            updatedAt: new Date().toISOString()
+        });
+        console.log("Template saved successfully:", templateId);
+        return templateId;
+    } catch (e) {
+        console.error("Firestore Save Template Error:", e);
+        throw e;
+    }
 };
 
 export const fetchTemplates = async (uid) => {
@@ -132,7 +147,14 @@ export const fetchTemplates = async (uid) => {
         const q = query(collection(db, 'templates'), where('userId', '==', uid));
         const snap = await getDocs(q);
         const templates = [];
-        snap.forEach(d => templates.push(d.data()));
+        snap.forEach(d => {
+            const data = d.data();
+            templates.push({
+                ...data,
+                id: data.id || d.id,
+                _docId: d.id // Real Firestore doc key
+            });
+        });
         return templates;
     } catch (e) {
         console.error("Fetch templates error:", e);
@@ -140,10 +162,19 @@ export const fetchTemplates = async (uid) => {
     }
 };
 
-export const deleteTemplate = async (templateId, uid) => {
-    if (!uid || !templateId) return;
-    const { deleteDoc } = await import('firebase/firestore');
-    await deleteDoc(doc(db, 'templates', `${uid}_${templateId}`));
+export const deleteTemplate = async (id, uid, docId) => {
+    if (!uid || !id) return;
+    try {
+        // If we have the exact docId from fetchTemplates, use it.
+        // Otherwise try the standard prefixed naming.
+        const targetId = docId || `${uid}_${id}`;
+        console.log(`Deleting template: ${id} (DocPath: ${targetId})`);
+        await deleteDoc(doc(db, 'templates', targetId));
+        console.log("Template deleted successfully from Firestore");
+    } catch (e) {
+        console.error("Firestore Delete Template Error:", e);
+        throw e;
+    }
 };
 
 // ========== EXERCISE DATABASE ==========
