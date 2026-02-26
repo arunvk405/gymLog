@@ -101,3 +101,37 @@ export const uploadProfilePhoto = async (file, uid) => {
     await uploadBytes(storageRef, file);
     return await getDownloadURL(storageRef);
 };
+
+// ========== TEMPLATE MANAGEMENT ==========
+
+export const saveTemplate = async (template, uid) => {
+    if (!uid) throw new Error("User not authenticated");
+    const templateId = template.id || `template_${Date.now()}`;
+    await setDoc(doc(db, 'templates', `${uid}_${templateId}`), {
+        ...template,
+        id: templateId,
+        userId: uid,
+        updatedAt: new Date().toISOString()
+    });
+    return templateId;
+};
+
+export const fetchTemplates = async (uid) => {
+    if (!uid) return [];
+    try {
+        const q = query(collection(db, 'templates'), where('userId', '==', uid));
+        const snap = await getDocs(q);
+        const templates = [];
+        snap.forEach(d => templates.push(d.data()));
+        return templates;
+    } catch (e) {
+        console.error("Fetch templates error:", e);
+        return [];
+    }
+};
+
+export const deleteTemplate = async (templateId, uid) => {
+    if (!uid || !templateId) return;
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'templates', `${uid}_${templateId}`));
+};

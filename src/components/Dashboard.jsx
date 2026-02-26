@@ -1,9 +1,9 @@
 import React from 'react';
-import { DEFAULT_PROGRAM, TARGETS } from '../data/program';
+import { TARGETS } from '../data/program';
 import { calculate1RM, getStrengthLevel } from '../utils/analytics';
-import { Dumbbell } from 'lucide-react';
+import { Dumbbell, Plus, ChevronDown, Trash2 } from 'lucide-react';
 
-const Dashboard = ({ history, profile, onStartWorkout }) => {
+const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates, onSelectTemplate, onCreateTemplate, onDeleteTemplate }) => {
     if (!profile) return <div className="fade-in">Loading profile...</div>;
 
     const getLatest1RM = (exerciseId) => {
@@ -28,6 +28,8 @@ const Dashboard = ({ history, profile, onStartWorkout }) => {
         { id: 'squat', name: 'Squat' },
         { id: 'deadlift', name: 'Deadlift' }
     ];
+
+    const programDays = activeTemplate?.days || [];
 
     return (
         <div className="fade-in">
@@ -65,20 +67,97 @@ const Dashboard = ({ history, profile, onStartWorkout }) => {
                 })}
             </div>
 
-            <h2 style={{ fontSize: '1.2rem', marginTop: '2.5rem', marginBottom: '1rem' }}>Start New Session</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                {DEFAULT_PROGRAM.map((day, idx) => (
+            {/* MY PROGRAM SECTION */}
+            <div style={{ marginTop: '2.5rem' }}>
+                <h2 style={{ fontSize: '1.2rem', margin: 0, marginBottom: '1rem' }}>My Program</h2>
+
+                {/* Active Template Card */}
+                <div className="panel" style={{ marginBottom: '1rem', padding: '1rem 1.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Template</span>
+                        {activeTemplate?.isDefault && (
+                            <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-color)', color: 'white', fontWeight: 700 }}>DEFAULT</span>
+                        )}
+                    </div>
+
+                    {templates.length > 1 ? (
+                        <div style={{ position: 'relative' }}>
+                            <select
+                                value={activeTemplate?.id || 'default'}
+                                onChange={(e) => onSelectTemplate(e.target.value)}
+                                style={{ width: '100%', fontSize: '0.9rem', fontWeight: 700, paddingRight: '2.5rem', appearance: 'none' }}
+                            >
+                                {templates.map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name}{t.isDefault ? ' (Default)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-secondary)' }} />
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>{activeTemplate?.name}</div>
+                    )}
+
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                        {programDays.length} training day{programDays.length !== 1 ? 's' : ''} per week
+                    </div>
+
+                    {/* Delete custom template */}
+                    {activeTemplate && !activeTemplate.isDefault && (
+                        <button
+                            className="secondary"
+                            onClick={() => { if (window.confirm(`Delete "${activeTemplate.name}"?`)) onDeleteTemplate(activeTemplate.id); }}
+                            style={{ marginTop: '0.6rem', padding: '0.3rem 0.6rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--error-color)', borderColor: 'var(--error-color)' }}
+                        >
+                            <Trash2 size={12} /> Delete
+                        </button>
+                    )}
+                </div>
+
+                {/* Create Template Button */}
+                <button
+                    className="secondary"
+                    onClick={onCreateTemplate}
+                    style={{
+                        width: '100%', padding: '0.8rem', borderRadius: '14px', borderStyle: 'dashed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        fontSize: '0.85rem', fontWeight: 700, marginBottom: '2rem'
+                    }}
+                >
+                    <Plus size={16} /> Create Your Own Template
+                </button>
+            </div>
+
+            {/* SESSION LIST */}
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '0.3rem' }}>Start New Session</h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1rem', marginTop: 0 }}>
+                Choose a day from your <b style={{ color: 'var(--accent-color)' }}>{activeTemplate?.name}</b> split
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', paddingBottom: '2rem' }}>
+                {programDays.map((day, idx) => (
                     <button
-                        key={day.day}
+                        key={day.day || idx}
                         className="secondary"
                         style={{ textAlign: 'left', padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                         onClick={() => onStartWorkout(idx)}
                     >
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-color)', fontWeight: 700 }}>DAY {day.day}</div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{day.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px', height: '32px', borderRadius: '10px', background: 'var(--accent-color)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.75rem', fontWeight: 900, color: 'white', flexShrink: 0
+                            }}>
+                                {day.day || idx + 1}
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{day.name}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    {day.exercises.length} exercise{day.exercises.length !== 1 ? 's' : ''}
+                                </div>
+                            </div>
                         </div>
-                        <Dumbbell size={20} />
+                        <Dumbbell size={20} color="var(--text-secondary)" />
                     </button>
                 ))}
             </div>

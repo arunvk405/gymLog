@@ -59,6 +59,18 @@ export const DEFAULT_PROGRAM = [
   }
 ];
 
+export const DEFAULT_TEMPLATE = {
+  id: 'default',
+  name: '5-Day Strength & Hypertrophy',
+  isDefault: true,
+  days: DEFAULT_PROGRAM
+};
+
+export const MUSCLE_GROUPS = [
+  'Chest', 'Back', 'Shoulders', 'Legs', 'Biceps', 'Triceps', 'Core', 'Traps', 'Full Body', 'Forearms', 'Glutes', 'Calves'
+];
+
+
 export const TARGETS = {
   squat: { target: 90, label: "90kg Squat" },
   deadlift: { target: 120, label: "120kg Deadlift" },

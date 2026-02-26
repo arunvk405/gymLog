@@ -7,8 +7,10 @@ import WorkoutLogger from './components/WorkoutLogger';
 import Profile from './components/Profile';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
+import TemplateEditor from './components/TemplateEditor';
 import { useAuth } from './context/AuthContext';
-import { fetchHistory, fetchProfile } from './utils/storage';
+import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate } from './utils/storage';
+import { DEFAULT_TEMPLATE } from './data/program';
 import { LayoutDashboard, History as HistoryIcon, TrendingUp, User, Loader2 } from 'lucide-react';
 
 function App() {
@@ -19,6 +21,13 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('gymlog-theme') || 'light');
+
+  // Template state
+  const [templates, setTemplates] = useState([DEFAULT_TEMPLATE]);
+  const [activeTemplateId, setActiveTemplateId] = useState(
+    localStorage.getItem('gymlog-active-template') || 'default'
+  );
+  const [editingTemplate, setEditingTemplate] = useState(null); // null = not editing, {} = new, {data} = edit
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -38,12 +47,15 @@ function App() {
       const loadData = async () => {
         setDataLoading(true);
         try {
-          const [h, p] = await Promise.all([
+          const [h, p, t] = await Promise.all([
             fetchHistory(user.uid),
-            fetchProfile(user.uid)
+            fetchProfile(user.uid),
+            fetchTemplates(user.uid)
           ]);
           setHistory(h || []);
           setProfile(p);
+          // Merge user templates with default
+          setTemplates([DEFAULT_TEMPLATE, ...(t || [])]);
         } catch (err) {
           console.error("Error loading user data:", err);
         } finally {
@@ -54,8 +66,50 @@ function App() {
     } else {
       setHistory([]);
       setProfile(null);
+      setTemplates([DEFAULT_TEMPLATE]);
     }
   }, [user]);
+
+  const activeTemplate = templates.find(t => t.id === activeTemplateId) || DEFAULT_TEMPLATE;
+
+  const handleSelectTemplate = (id) => {
+    setActiveTemplateId(id);
+    localStorage.setItem('gymlog-active-template', id);
+  };
+
+  const handleSaveTemplate = async (templateData) => {
+    try {
+      const id = await saveTemplate(templateData, user.uid);
+      templateData.id = id;
+      // Update local state
+      setTemplates(prev => {
+        const existing = prev.findIndex(t => t.id === templateData.id);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = templateData;
+          return updated;
+        }
+        return [...prev, templateData];
+      });
+      setActiveTemplateId(templateData.id);
+      localStorage.setItem('gymlog-active-template', templateData.id);
+      setEditingTemplate(null);
+    } catch (err) {
+      console.error("Error saving template:", err);
+      alert("Failed to save template: " + err.message);
+    }
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    try {
+      await deleteTemplate(id, user.uid);
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      setActiveTemplateId('default');
+      localStorage.setItem('gymlog-active-template', 'default');
+    } catch (err) {
+      console.error("Error deleting template:", err);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -69,11 +123,23 @@ function App() {
   if (!user) return <div className="app-container"><Auth /></div>;
 
   const renderContent = () => {
-    // 1. Check for workout logger (active workout)
+    // Template Editor
+    if (editingTemplate !== null) {
+      return (
+        <TemplateEditor
+          template={editingTemplate.id ? editingTemplate : null}
+          onSave={handleSaveTemplate}
+          onCancel={() => setEditingTemplate(null)}
+        />
+      );
+    }
+
+    // Active workout
     if (activeWorkoutDay !== null) {
+      const programDay = activeTemplate.days[activeWorkoutDay];
       return (
         <WorkoutLogger
-          dayIndex={activeWorkoutDay}
+          programDay={programDay}
           history={history}
           onFinish={async () => {
             setActiveWorkoutDay(null);
@@ -88,7 +154,7 @@ function App() {
       );
     }
 
-    // 2. Check for new user onboarding logic
+    // New user onboarding
     if (profile && profile.isNewUser) {
       return (
         <Onboarding
@@ -99,7 +165,7 @@ function App() {
       );
     }
 
-    // 3. Loading state for initial data
+    // Loading state
     if (dataLoading && history.length === 0) {
       return (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
@@ -110,7 +176,18 @@ function App() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard history={history} profile={profile} onStartWorkout={(idx) => setActiveWorkoutDay(idx)} />;
+        return (
+          <Dashboard
+            history={history}
+            profile={profile}
+            onStartWorkout={(idx) => setActiveWorkoutDay(idx)}
+            activeTemplate={activeTemplate}
+            templates={templates}
+            onSelectTemplate={handleSelectTemplate}
+            onCreateTemplate={() => setEditingTemplate({})}
+            onDeleteTemplate={handleDeleteTemplate}
+          />
+        );
       case 'history':
         return <History history={history} />;
       case 'progress':
@@ -118,7 +195,18 @@ function App() {
       case 'profile':
         return <Profile profile={profile} setProfile={setProfile} theme={theme} toggleTheme={toggleTheme} />;
       default:
-        return <Dashboard history={history} profile={profile} onStartWorkout={(idx) => setActiveWorkoutDay(idx)} />;
+        return (
+          <Dashboard
+            history={history}
+            profile={profile}
+            onStartWorkout={(idx) => setActiveWorkoutDay(idx)}
+            activeTemplate={activeTemplate}
+            templates={templates}
+            onSelectTemplate={handleSelectTemplate}
+            onCreateTemplate={() => setEditingTemplate({})}
+            onDeleteTemplate={handleDeleteTemplate}
+          />
+        );
     }
   };
 
@@ -128,7 +216,7 @@ function App() {
         {renderContent()}
       </main>
 
-      {activeWorkoutDay === null && !(profile && profile.isNewUser) && (
+      {activeWorkoutDay === null && editingTemplate === null && !(profile && profile.isNewUser) && (
         <nav className="bottom-nav">
           <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
             <LayoutDashboard size={22} />

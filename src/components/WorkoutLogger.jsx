@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { DEFAULT_PROGRAM } from '../data/program';
 import { saveWorkout } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
 import { Check, ArrowLeft, Loader2, Plus, CheckCircle2 } from 'lucide-react';
 
-const WorkoutLogger = ({ onFinish, onCancel, dayIndex, history }) => {
+const WorkoutLogger = ({ onFinish, onCancel, programDay, history }) => {
     const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
-    const programDay = DEFAULT_PROGRAM[dayIndex];
 
     const [workout, setWorkout] = useState(() => {
         const exercises = programDay.exercises.map(ex => {
