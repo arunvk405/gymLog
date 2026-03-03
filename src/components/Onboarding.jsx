@@ -14,7 +14,13 @@ const Onboarding = ({ onComplete }) => {
         gender: 'male',
         activityLevel: 'moderate',
         goal: 'muscle_gain',
-        genericLiftWeight: 20,
+        baseWeights: {
+            benchPress: 60,
+            squat: 60,
+            deadlift: 80,
+            legPress: 110,
+            overheadPress: 25
+        },
         photoURL: user.photoURL || null
     });
 
@@ -115,14 +121,50 @@ const Onboarding = ({ onComplete }) => {
                     </div>
 
                     <div style={{ marginBottom: '1.2rem' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Generic Lift Weight (kg)</label>
-                        <input
-                            type="number"
-                            required
-                            value={profile.genericLiftWeight}
-                            onChange={(e) => setProfile({ ...profile, genericLiftWeight: parseFloat(e.target.value) || 0 })}
-                            style={{ padding: '0.8rem', width: '100%' }}
-                        />
+                        <label style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px', display: 'block', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>Base Lifts (kg)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Bench Press</label>
+                                <input
+                                    type="number"
+                                    required
+                                    value={profile.baseWeights.benchPress}
+                                    onChange={(e) => setProfile({ ...profile, baseWeights: { ...profile.baseWeights, benchPress: parseFloat(e.target.value) || 0 } })}
+                                    style={{ padding: '0.8rem', width: '100%' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Squat</label>
+                                <input
+                                    type="number"
+                                    required
+                                    value={profile.baseWeights.squat}
+                                    onChange={(e) => setProfile({ ...profile, baseWeights: { ...profile.baseWeights, squat: parseFloat(e.target.value) || 0 } })}
+                                    style={{ padding: '0.8rem', width: '100%' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Deadlift</label>
+                                <input
+                                    type="number"
+                                    required
+                                    value={profile.baseWeights.deadlift}
+                                    onChange={(e) => setProfile({ ...profile, baseWeights: { ...profile.baseWeights, deadlift: parseFloat(e.target.value) || 0 } })}
+                                    style={{ padding: '0.8rem', width: '100%' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Leg Press</label>
+                                <input
+                                    type="number"
+                                    required
+                                    value={profile.baseWeights.legPress}
+                                    onChange={(e) => setProfile({ ...profile, baseWeights: { ...profile.baseWeights, legPress: parseFloat(e.target.value) || 0 } })}
+                                    style={{ padding: '0.8rem', width: '100%' }}
+                                />
+                            </div>
+                        </div>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '8px' }}>These weights will be used as the starting point for your first workout sessions so you don't have to guess.</p>
                     </div>
 
                     <div>

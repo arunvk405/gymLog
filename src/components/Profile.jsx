@@ -262,8 +262,25 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
                             </select>
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
-                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Generic Lift Weight (kg)</label>
-                            <input type="number" value={tempProfile.genericLiftWeight || ''} onChange={(e) => setTempProfile({ ...tempProfile, genericLiftWeight: parseFloat(e.target.value) || 0 })} />
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-primary)', marginBottom: '4px', display: 'block', fontWeight: 800, borderBottom: '1px solid var(--border-color)', paddingBottom: '4px' }}>Base Starting Lifts (kg)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'block' }}>Bench Press</label>
+                                    <input type="number" value={tempProfile.baseWeights?.benchPress || ''} onChange={(e) => setTempProfile({ ...tempProfile, baseWeights: { ...tempProfile.baseWeights, benchPress: parseFloat(e.target.value) || 0 } })} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'block' }}>Squat</label>
+                                    <input type="number" value={tempProfile.baseWeights?.squat || ''} onChange={(e) => setTempProfile({ ...tempProfile, baseWeights: { ...tempProfile.baseWeights, squat: parseFloat(e.target.value) || 0 } })} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'block' }}>Deadlift</label>
+                                    <input type="number" value={tempProfile.baseWeights?.deadlift || ''} onChange={(e) => setTempProfile({ ...tempProfile, baseWeights: { ...tempProfile.baseWeights, deadlift: parseFloat(e.target.value) || 0 } })} />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '2px', display: 'block' }}>Leg Press</label>
+                                    <input type="number" value={tempProfile.baseWeights?.legPress || ''} onChange={(e) => setTempProfile({ ...tempProfile, baseWeights: { ...tempProfile.baseWeights, legPress: parseFloat(e.target.value) || 0 } })} />
+                                </div>
+                            </div>
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Activity Level</label>
