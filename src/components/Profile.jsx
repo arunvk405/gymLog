@@ -262,6 +262,10 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
                             </select>
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Generic Lift Weight (kg)</label>
+                            <input type="number" value={tempProfile.genericLiftWeight || ''} onChange={(e) => setTempProfile({ ...tempProfile, genericLiftWeight: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Activity Level</label>
                             <select value={tempProfile.activityLevel} onChange={(e) => setTempProfile({ ...tempProfile, activityLevel: e.target.value })}>
                                 <option value="sedentary">Sedentary</option>

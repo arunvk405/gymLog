@@ -14,6 +14,7 @@ const Onboarding = ({ onComplete }) => {
         gender: 'male',
         activityLevel: 'moderate',
         goal: 'muscle_gain',
+        genericLiftWeight: 20,
         photoURL: user.photoURL || null
     });
 
@@ -111,6 +112,17 @@ const Onboarding = ({ onComplete }) => {
                             <option value="strength">Increase Strength</option>
                             <option value="endurance">Endurance</option>
                         </select>
+                    </div>
+
+                    <div style={{ marginBottom: '1.2rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Generic Lift Weight (kg)</label>
+                        <input
+                            type="number"
+                            required
+                            value={profile.genericLiftWeight}
+                            onChange={(e) => setProfile({ ...profile, genericLiftWeight: parseFloat(e.target.value) || 0 })}
+                            style={{ padding: '0.8rem', width: '100%' }}
+                        />
                     </div>
 
                     <div>

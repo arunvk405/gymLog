@@ -26,7 +26,7 @@ const WorkoutLogger = ({ onFinish, onCancel, programDay, history, profile }) => 
                 ...ex,
                 sets: Array.from({ length: ex.sets }, (_, i) => {
                     const prevSet = lastEx?.sets[i] || lastEx?.sets[lastEx.sets.length - 1];
-                    const prevWeight = prevSet ? prevSet.weight : ex.startWeight;
+                    const prevWeight = prevSet ? prevSet.weight : (profile?.genericLiftWeight !== undefined && profile?.genericLiftWeight !== '' ? profile.genericLiftWeight : ex.startWeight);
 
                     let suggestedWeight = prevWeight;
                     const allLastExSetsSuccess = lastEx?.sets.every(s => s.reps >= ex.reps);
