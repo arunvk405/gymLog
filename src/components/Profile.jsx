@@ -100,18 +100,28 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
     };
 
     const handleShare = async () => {
+        const shareData = {
+            title: 'BulkBro',
+            text: `👋 Hey! Check out BulkBro, a clean and simple workout tracker I'm using.\n\n🚀 **How to Install (It's Free!):**\n\n📱 **iOS (iPhone):**\n1. Open this link in Safari.\n2. Tap the 'Share' button (square with arrow).\n3. Scroll down and tap 'Add to Home Screen'.\n\n🤖 **Android:**\n1. Open this link in Chrome.\n2. Tap the three dots menu (⋮).\n3. Tap 'Install App' or 'Add to Home Screen'.`,
+            url: 'https://bulkbro.netlify.app/',
+        };
+
         if (navigator.share) {
             try {
-                await navigator.share({
-                    title: 'BulkBro',
-                    text: 'Check out my progress on BulkBro! The ultimate workout tracker.',
-                    url: window.location.origin,
-                });
+                await navigator.share(shareData);
             } catch (err) {
-                console.error("Share failed:", err);
+                if (err.name !== 'AbortError') {
+                    console.error("Share failed:", err);
+                }
             }
         } else {
-            toast.error("Sharing is not supported on this browser");
+            try {
+                const fullMessage = `${shareData.text}\n\nLink: ${shareData.url}`;
+                await navigator.clipboard.writeText(fullMessage);
+                toast.success("Installation guide copied to clipboard!");
+            } catch (err) {
+                toast.error("Sharing is not supported on this browser");
+            }
         }
     };
 
