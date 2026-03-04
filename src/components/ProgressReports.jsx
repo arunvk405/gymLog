@@ -66,7 +66,7 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
         return {
             tdee,
             bulkTarget,
-            protein: Math.round(profile.bodyweight * 2),
+            protein: Math.round(profile.bodyweight * 1.6),
             focusArea,
             muscleVolumes,
             maturity: muscleMaturity,

@@ -48,7 +48,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
         const isMale = profile.gender === 'male';
         return {
             calories: tdee,
-            protein: Math.round(profile.bodyweight * 2.2), // 2.2g per kg (1g per lb)
+            protein: Math.round(profile.bodyweight * 1.6), // 1.6g per kg (1g per lb)
             fats: Math.round((tdee * 0.25) / 9), // 25% of cals
             carbs: Math.round((tdee - (profile.bodyweight * 2.2 * 4) - ((tdee * 0.25))) / 4),
             water: (profile.bodyweight * 0.04).toFixed(1), // 40ml per kg
