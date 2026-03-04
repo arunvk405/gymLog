@@ -12,11 +12,11 @@ export const saveWorkout = async (workout, uid, workoutDate) => {
         userId: uid,
         timestamp: sessionDate.getTime(),
         date: sessionDate.toISOString(),
-        app_version: 'gymlog_v1'
+        app_version: 'bulkbro_v1'
     };
 
     try {
-        console.log("Saving to new GymLog project...", workoutData);
+        console.log("Saving to new BulkBro project...", workoutData);
         const docRef = await addDoc(collection(db, 'workouts'), workoutData);
         console.log("Workout saved! ID:", docRef.id);
         return docRef.id;
@@ -101,8 +101,52 @@ export const fetchProfile = async (uid) => {
         gender: 'male',
         activityLevel: 'moderate',
         photoURL: null,
+        bodyfat: 15,
         isNewUser: true
     };
+};
+
+export const logWeightHistory = async (uid, weight, bodyfat) => {
+    if (!uid) return;
+    try {
+        const timestamp = new Date().getTime();
+        const date = new Date().toISOString();
+        await addDoc(collection(db, 'weight_history'), {
+            userId: uid,
+            weight: parseFloat(weight),
+            bodyfat: parseFloat(bodyfat) || 0,
+            timestamp,
+            date
+        });
+
+        // Also update current bodyweight in profile for convenience
+        const profileRef = doc(db, 'profiles', uid);
+        await setDoc(profileRef, {
+            bodyweight: parseFloat(weight),
+            bodyfat: parseFloat(bodyfat) || 15
+        }, { merge: true });
+
+    } catch (e) {
+        console.error("Weight Log Error:", e);
+        throw e;
+    }
+};
+
+export const fetchWeightHistory = async (uid) => {
+    if (!uid) return [];
+    try {
+        const q = query(
+            collection(db, 'weight_history'),
+            where('userId', '==', uid)
+        );
+        const snap = await getDocs(q);
+        const history = [];
+        snap.forEach(d => history.push({ id: d.id, ...d.data() }));
+        return history.sort((a, b) => a.timestamp - b.timestamp);
+    } catch (e) {
+        console.error("Fetch weight history error:", e);
+        return [];
+    }
 };
 
 export const uploadProfilePhoto = async (file, uid) => {

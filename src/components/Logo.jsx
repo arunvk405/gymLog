@@ -46,7 +46,7 @@ const Logo = ({ size = 100, horizontal = false }) => {
                     letterSpacing: '-1px',
                     color: 'white'
                 }}>
-                    Gym<span style={{ color: primaryColor }}>Log</span>
+                    Bulk<span style={{ color: primaryColor }}>Bro</span>
                 </h1>
                 <p style={{
                     fontSize: (size * 0.1) + 'px',

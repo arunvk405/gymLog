@@ -8,8 +8,9 @@ import Profile from './components/Profile';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import TemplateEditor from './components/TemplateEditor';
+import WeightLogModal from './components/WeightLogModal';
 import { useAuth } from './context/AuthContext';
-import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises } from './utils/storage';
+import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises, fetchWeightHistory, logWeightHistory } from './utils/storage';
 import { Toaster, toast } from 'react-hot-toast';
 import { DEFAULT_TEMPLATE } from './data/program';
 import { EXERCISE_DATABASE } from './data/exercises';
@@ -22,19 +23,21 @@ function App() {
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem('gymlog-theme') || 'light');
+  const [theme, setTheme] = useState(localStorage.getItem('bulkbro-theme') || 'light');
 
   // Template state
   const [templates, setTemplates] = useState([DEFAULT_TEMPLATE]);
   const [activeTemplateId, setActiveTemplateId] = useState(
-    localStorage.getItem('gymlog-active-template') || 'default'
+    localStorage.getItem('bulkbro-active-template') || 'default'
   );
   const [editingTemplate, setEditingTemplate] = useState(null); // null = not editing, {} = new, {data} = edit
   const [exerciseDb, setExerciseDb] = useState([]);
+  const [weightHistory, setWeightHistory] = useState([]);
+  const [showWeightModal, setShowWeightModal] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('gymlog-theme', theme);
+    localStorage.setItem('bulkbro-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -54,11 +57,24 @@ function App() {
           const h = await fetchHistory(user.uid).catch(() => []);
           const p = await fetchProfile(user.uid).catch(() => null);
           const t = await fetchTemplates(user.uid).catch(() => []);
+          const wh = await fetchWeightHistory(user.uid).catch(() => []);
           const exercises = await fetchExercises().catch(() => null);
 
           setHistory(h || []);
           setProfile(p);
+          setWeightHistory(wh || []);
           setTemplates([DEFAULT_TEMPLATE, ...(t || [])]);
+
+          // Check for Monday Weight Log
+          const today = new Date();
+          const isMonday = today.getDay() === 1;
+          if (isMonday && wh) {
+            const startOfDay = new Date(today.setHours(0, 0, 0, 0)).getTime();
+            const alreadyLogged = wh.some(entry => entry.timestamp >= startOfDay);
+            if (!alreadyLogged) {
+              setShowWeightModal(true);
+            }
+          }
 
           // Use exercises from Firebase if available, otherwise fallback to local DB
           if (exercises && exercises.length > 0) {
@@ -80,15 +96,32 @@ function App() {
     } else {
       setHistory([]);
       setProfile(null);
+      setWeightHistory([]);
       setTemplates([DEFAULT_TEMPLATE]);
     }
   }, [user]);
+
+  const handleSaveWeight = async (weight, bodyfat) => {
+    try {
+      await logWeightHistory(user.uid, weight, bodyfat);
+      const updatedWh = await fetchWeightHistory(user.uid);
+      setWeightHistory(updatedWh);
+
+      const updatedProfile = await fetchProfile(user.uid);
+      setProfile(updatedProfile);
+
+      setShowWeightModal(false);
+      toast.success("Progress logged! Consistency is key.");
+    } catch (err) {
+      toast.error("Failed to save weight");
+    }
+  };
 
   const activeTemplate = templates.find(t => t.id === activeTemplateId) || DEFAULT_TEMPLATE;
 
   const handleSelectTemplate = (id) => {
     setActiveTemplateId(id);
-    localStorage.setItem('gymlog-active-template', id);
+    localStorage.setItem('bulkbro-active-template', id);
   };
 
   const handleSaveTemplate = async (templateData) => {
@@ -106,7 +139,7 @@ function App() {
         return [...prev, templateData];
       });
       setActiveTemplateId(templateData.id);
-      localStorage.setItem('gymlog-active-template', templateData.id);
+      localStorage.setItem('bulkbro-active-template', templateData.id);
       setEditingTemplate(null);
       toast.success("Template saved!");
     } catch (err) {
@@ -127,7 +160,7 @@ function App() {
       await deleteTemplate(id, user.uid, templateToDelete?._docId);
       setTemplates(prev => prev.filter(t => t.id !== id));
       setActiveTemplateId('default');
-      localStorage.setItem('gymlog-active-template', 'default');
+      localStorage.setItem('bulkbro-active-template', 'default');
       toast.success("Template deleted");
     } catch (err) {
       console.error("Error deleting template:", err);
@@ -221,7 +254,13 @@ function App() {
           setHistory(h || []);
         }} />;
       case 'progress':
-        return <ProgressReports history={history} profile={profile} theme={theme} />;
+        return <ProgressReports
+          history={history}
+          profile={profile}
+          theme={theme}
+          weightHistory={weightHistory}
+          onLogWeight={() => setShowWeightModal(true)}
+        />;
       case 'profile':
         return <Profile profile={profile} setProfile={setProfile} theme={theme} toggleTheme={toggleTheme} />;
       default:
@@ -265,6 +304,15 @@ function App() {
       <main>
         {renderContent()}
       </main>
+
+      {showWeightModal && (
+        <WeightLogModal
+          currentWeight={profile?.bodyweight}
+          currentBodyfat={profile?.bodyfat}
+          onSave={handleSaveWeight}
+          onCancel={() => setShowWeightModal(false)}
+        />
+      )}
 
       {activeWorkoutDay === null && editingTemplate === null && !(profile && profile.isNewUser) && (
         <nav className="bottom-nav">

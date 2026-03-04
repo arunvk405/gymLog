@@ -20,7 +20,7 @@ export const exportToCSV = (history) => {
     const a = document.createElement('a');
     a.setAttribute('hidden', '');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'gymlog_history.csv');
+    a.setAttribute('download', 'bulkbro_history.csv');
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -57,5 +57,5 @@ export const generatePDFReport = (history) => {
         headStyles: { fillStyle: '#1f6feb' }
     });
 
-    doc.save('GymLog_Report.pdf');
+    doc.save('BulkBro_Report.pdf');
 };

@@ -57,7 +57,7 @@ const Auth = () => {
         <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '90vh', padding: '1rem' }}>
             <div className="panel" style={{ width: '100%', maxWidth: '400px' }}>
                 <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '0.5rem' }}>
-                    Gym<span style={{ color: 'var(--accent-color)' }}>Log</span>
+                    Bulk<span style={{ color: 'var(--accent-color)' }}>Bro</span>
                 </h1>
                 <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', fontSize: '1.2rem' }}>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
                 <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.85rem' }}>

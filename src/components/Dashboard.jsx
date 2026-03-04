@@ -34,7 +34,7 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
 
     return (
         <div className="fade-in">
-            <h1 style={{ fontSize: '2rem', marginBottom: '2rem' }}>GymLog</h1>
+            <h1 style={{ fontSize: '2rem', marginBottom: '2rem' }}>BulkBro</h1>
 
             <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
                 {big3.map(ex => {

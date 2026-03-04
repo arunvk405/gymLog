@@ -103,8 +103,8 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: 'GymLog',
-                    text: 'Check out my progress on GymLog! The ultimate workout tracker.',
+                    title: 'BulkBro',
+                    text: 'Check out my progress on BulkBro! The ultimate workout tracker.',
                     url: window.location.origin,
                 });
             } catch (err) {
@@ -363,7 +363,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme }) => {
                     </div>
 
                     <div style={{ textAlign: 'center', marginTop: '3rem', paddingBottom: '2rem' }}>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '1px' }}>GYMLOG v1.0.2</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '1px' }}>BULKBRO v1.0.2</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '4px' }}>Precision Training Intelligence</div>
                     </div>
                 </>
