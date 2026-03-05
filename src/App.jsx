@@ -186,7 +186,7 @@ function App() {
     if (editingTemplate !== null) {
       return (
         <TemplateEditor
-          template={editingTemplate.id ? editingTemplate : null}
+          template={Object.keys(editingTemplate).length > 0 ? editingTemplate : null}
           exerciseDb={exerciseDb}
           onSave={handleSaveTemplate}
           onCancel={() => setEditingTemplate(null)}

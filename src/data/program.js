@@ -32,7 +32,8 @@ export const DEFAULT_PROGRAM = [
       { id: "rear_delt_fly", name: "Rear Delt Fly", sets: 4, reps: 15, startWeight: 25, type: "accessory", muscleGroup: "Shoulders", progression: 5 },
       { id: "shrugs", name: "Shrugs", sets: 3, reps: 12, startWeight: 25, type: "accessory", muscleGroup: "Traps", progression: 10 },
       { id: "hanging_leg_raises", name: "Hanging Leg Raise", sets: 4, reps: 15, startWeight: 0, type: "accessory", muscleGroup: "Core", progression: 0 },
-      { id: "plank", name: "Plank", sets: 3, reps: 60, startWeight: 60, unit: "sec", type: "accessory", muscleGroup: "Core", progression: 0 }
+      { id: "machine_crunch", name: "Machine Crunches", sets: 3, reps: 15, startWeight: 20, type: "accessory", muscleGroup: "Core", progression: 5 },
+      { id: "plank", name: "Plank", sets: 3, reps: 60, startWeight: 60, unit: "sec", type: "accessory", muscleGroup: "Core", progression: 0 },
     ]
   },
   {
@@ -40,14 +41,13 @@ export const DEFAULT_PROGRAM = [
     name: "Legs + Forearms",
     exercises: [
       { id: "squat", name: "Barbell Squat", sets: 4, reps: 6, startWeight: 60, type: "compound", muscleGroup: "Legs", progression: 2.5 },
-      { id: "rdl", name: "Romanian Deadlift", sets: 3, reps: 8, startWeight: 65, type: "accessory", muscleGroup: "Legs", progression: 5 },
+      { id: "hip_thrust", name: "Machine Hip Thrust", sets: 3, reps: 10, startWeight: 40, type: "compound", muscleGroup: "Glutes", progression: 5 },
       { id: "leg_press", name: "Leg Press", sets: 3, reps: 10, startWeight: 110, type: "accessory", muscleGroup: "Legs", progression: 10 },
       { id: "leg_curl", name: "Leg Curl", sets: 3, reps: 12, startWeight: 35, type: "accessory", muscleGroup: "Legs", progression: 5 },
       { id: "leg_extension", name: "Leg Extension", sets: 3, reps: 15, startWeight: 45, type: "accessory", muscleGroup: "Legs", progression: 5 },
       { id: "calf_raises", name: "Calf Raises", sets: 4, reps: 15, startWeight: 20, type: "accessory", muscleGroup: "Calves", progression: 5 },
       { id: "wrist_curl", name: "Wrist Curl", sets: 3, reps: 15, startWeight: 10, type: "accessory", muscleGroup: "Forearms", progression: 2.5 },
-      { id: "reverse_wrist_curl", name: "Reverse Wrist Curl", sets: 3, reps: 15, startWeight: 10, type: "accessory", muscleGroup: "Forearms", progression: 2.5 },
-      { id: "farmers_walk", name: "Farmer's Walk", sets: 2, reps: 1, startWeight: 40, unit: "rounds", type: "accessory", muscleGroup: "Full Body", progression: 5 }
+      { id: "reverse_wrist_curl", name: "Reverse Wrist Curl", sets: 3, reps: 15, startWeight: 10, type: "accessory", muscleGroup: "Forearms", progression: 2.5 }
     ]
   }
 ];

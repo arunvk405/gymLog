@@ -189,13 +189,18 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', paddingBottom: '2rem' }}>
                 {programDays.map((day, idx) => (
-                    <button
+                    <div
                         key={day.day || idx}
                         className="secondary"
-                        style={{ textAlign: 'left', padding: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                        style={{
+                            textAlign: 'left', padding: '0.8rem 1.2rem', display: 'flex',
+                            justifyContent: 'space-between', alignItems: 'center', borderRadius: '14px',
+                            border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s',
+                            boxShadow: 'var(--shadow-sm)'
+                        }}
                         onClick={() => onStartWorkout(idx)}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                             <div style={{
                                 width: '32px', height: '32px', borderRadius: '10px', background: 'var(--accent-color)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -210,8 +215,42 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                                 </div>
                             </div>
                         </div>
-                        <Dumbbell size={20} color="var(--text-secondary)" />
-                    </button>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    let t = JSON.parse(JSON.stringify(activeTemplate));
+                                    if (t.isDefault) {
+                                        t.id = '';
+                                        t.name = t.name + ' (Copy)';
+                                        t.isDefault = false;
+                                    }
+                                    t._expandDay = idx;
+                                    onEditTemplate(t);
+                                }}
+                                style={{
+                                    background: 'var(--panel-color)', border: '1px solid var(--border-color)',
+                                    cursor: 'pointer', padding: '8px', color: 'var(--text-secondary)',
+                                    borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}
+                            >
+                                <Pencil size={18} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onStartWorkout(idx);
+                                }}
+                                style={{
+                                    background: 'var(--accent-color)', border: 'none',
+                                    cursor: 'pointer', padding: '8px', color: 'white',
+                                    borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}
+                            >
+                                <Dumbbell size={18} />
+                            </button>
+                        </div>
+                    </div>
                 ))}
             </div>
         </div>

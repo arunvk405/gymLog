@@ -215,7 +215,11 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         if (isSaving) return;
         setIsSaving(true);
         try {
-            await saveWorkout(workout, user.uid, workoutDate);
+            const workoutToSave = {
+                ...workout,
+                totalTime: elapsedTime
+            };
+            await saveWorkout(workoutToSave, user.uid, workoutDate);
             toast.success("Workout logged!");
             onFinish();
         } catch (err) {

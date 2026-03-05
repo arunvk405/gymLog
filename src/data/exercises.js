@@ -54,7 +54,7 @@ export const EXERCISE_DATABASE = [
     { id: 'leg_curl_seated', name: 'Seated Leg Curl', muscleGroup: 'Legs', type: 'accessory', defaultSets: 3, defaultReps: 12, defaultWeight: 35, progression: 5 },
 
     // GLUTES
-    { id: 'hip_thrust', name: 'Hip Thrust', muscleGroup: 'Glutes', type: 'compound', defaultSets: 3, defaultReps: 10, defaultWeight: 60, progression: 5 },
+    { id: 'hip_thrust', name: 'Machine Hip Thrust', muscleGroup: 'Glutes', type: 'compound', defaultSets: 3, defaultReps: 10, defaultWeight: 60, progression: 5 },
     { id: 'glute_bridge', name: 'Glute Bridge', muscleGroup: 'Glutes', type: 'accessory', defaultSets: 3, defaultReps: 12, defaultWeight: 40, progression: 5 },
     { id: 'cable_kickback', name: 'Cable Kickback', muscleGroup: 'Glutes', type: 'accessory', defaultSets: 3, defaultReps: 12, defaultWeight: 10, progression: 2.5 },
 
@@ -94,6 +94,7 @@ export const EXERCISE_DATABASE = [
     { id: 'russian_twist', name: 'Russian Twist', muscleGroup: 'Core', type: 'accessory', defaultSets: 3, defaultReps: 20, defaultWeight: 10, progression: 2 },
     { id: 'mountain_climbers', name: 'Mountain Climbers', muscleGroup: 'Core', type: 'accessory', defaultSets: 3, defaultReps: 20, defaultWeight: 0, progression: 0 },
     { id: 'decline_crunch', name: 'Decline Crunch', muscleGroup: 'Core', type: 'accessory', defaultSets: 3, defaultReps: 15, defaultWeight: 0, progression: 0 },
+    { id: 'machine_crunch', name: 'Machine Crunches', muscleGroup: 'Core', type: 'accessory', defaultSets: 3, defaultReps: 15, defaultWeight: 20, progression: 5 },
 
     // FOREARMS
     { id: 'wrist_curl', name: 'Wrist Curl', muscleGroup: 'Forearms', type: 'accessory', defaultSets: 3, defaultReps: 15, defaultWeight: 10, progression: 1 },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { exportToCSV, generatePDFReport } from '../utils/export';
 import { updateWorkout } from '../utils/storage';
-import { Download, FileText, ChevronDown, ChevronUp, Calendar, Pencil, Save, X } from 'lucide-react';
+import { Download, FileText, ChevronDown, ChevronUp, Calendar, Pencil, Save, X, Clock, Trash2 } from 'lucide-react';
 import { calculateVolume } from '../utils/analytics';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
@@ -64,6 +64,13 @@ const History = ({ history, onUpdate }) => {
             </div>
         );
     }
+
+    const formatTime = (seconds) => {
+        if (!seconds) return null;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+    };
 
     return (
         <div className="fade-in">
@@ -141,6 +148,11 @@ const History = ({ history, onUpdate }) => {
                                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                                 {session.exercises.length} Ex
                                             </span>
+                                            {session.totalTime && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--bg-color)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                    <Clock size={12} /> {formatTime(session.totalTime)}
+                                                </div>
+                                            )}
                                             {expanded[session.id || session.date] ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                         </>
                                     )}

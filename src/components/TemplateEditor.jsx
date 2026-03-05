@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { MUSCLE_GROUPS } from '../data/program';
-import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X } from 'lucide-react';
+import { MUSCLE_GROUPS, DEFAULT_TEMPLATE } from '../data/program';
+import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw } from 'lucide-react';
 
 const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
     const [search, setSearch] = useState('');
@@ -115,7 +115,7 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
     const isEditing = !!template;
     const [name, setName] = useState(template?.name || '');
     const [days, setDays] = useState(template?.days || []);
-    const [expandedDay, setExpandedDay] = useState(null);
+    const [expandedDay, setExpandedDay] = useState(template?._expandDay !== undefined ? template._expandDay : null);
     const [pickingForDay, setPickingForDay] = useState(null); // index of day we're picking exercise for
 
     const addDay = () => {
@@ -178,6 +178,14 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
         });
     };
 
+    const resetToDefault = () => {
+        if (window.confirm("Are you sure you want to revert this template to the system's Default 4-Day Split? This will overwrite your current days and exercises below.")) {
+            setName(DEFAULT_TEMPLATE.name + " (Copy)");
+            setDays(JSON.parse(JSON.stringify(DEFAULT_TEMPLATE.days)));
+            toast.success("Restored to default split");
+        }
+    };
+
     // Full-screen exercise picker
     if (pickingForDay !== null) {
         return (
@@ -226,6 +234,20 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                     Name your template, add training days, and pick exercises from the library.
                     Each exercise comes with preset sets, reps, and weight suggestions.
                 </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
+                <button
+                    className="secondary"
+                    onClick={resetToDefault}
+                    style={{
+                        padding: '0.4rem 0.8rem', borderRadius: '10px', display: 'flex',
+                        alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700,
+                        color: 'var(--text-secondary)'
+                    }}
+                >
+                    <RotateCcw size={14} /> Restore Default 4-Day Split
+                </button>
             </div>
 
             {/* TEMPLATE NAME */}
