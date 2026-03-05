@@ -90,26 +90,19 @@ const History = ({ history, onUpdate }) => {
                             border: isEditing ? '2px solid var(--accent-color)' : '1px solid var(--border-color)'
                         }}>
                             <div
-                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: isEditing ? 'flex-start' : 'center', flexWrap: isEditing ? 'wrap' : 'nowrap', gap: isEditing ? '0.75rem' : '0', cursor: 'pointer' }}
                                 onClick={() => !isEditing && toggleExpand(session.id || session.date)}
                             >
                                 <div>
                                     {isEditing ? (
                                         <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const input = e.currentTarget.querySelector('input');
-                                                if (input && input.showPicker) {
-                                                    input.showPicker();
-                                                } else if (input) {
-                                                    input.click();
-                                                }
-                                            }}
                                             style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                                marginBottom: '8px', background: 'var(--muted-color)',
-                                                padding: '4px 10px', borderRadius: '10px',
-                                                border: '1px solid var(--border-color)', cursor: 'pointer'
+                                                position: 'relative',
+                                                display: 'inline-flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+                                                marginBottom: '6px', background: 'var(--muted-color)',
+                                                padding: '8px 16px', borderRadius: '10px',
+                                                border: '1px solid var(--border-color)', cursor: 'pointer',
+                                                overflow: 'hidden'
                                             }}
                                         >
                                             <Calendar size={13} color="var(--accent-color)" />
@@ -122,10 +115,11 @@ const History = ({ history, onUpdate }) => {
                                                 value={editData.date ? editData.date.split('T')[0] : ''}
                                                 max={new Date().toISOString().split('T')[0]}
                                                 onChange={(e) => {
+                                                    if (!e.target.value) return;
                                                     const newDate = new Date(e.target.value + 'T12:00:00');
                                                     setEditData({ ...editData, date: newDate.toISOString() });
                                                 }}
-                                                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                                                className="date-picker-input"
                                             />
                                         </div>
                                     ) : (
@@ -135,7 +129,7 @@ const History = ({ history, onUpdate }) => {
                                     )}
                                     <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{session.name}</div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                     {!isEditing && (
                                         <>
                                             <button
@@ -201,6 +195,7 @@ const History = ({ history, onUpdate }) => {
                                                             <div style={{ position: 'relative' }}>
                                                                 <input
                                                                     type="number"
+                                                                    inputMode="decimal"
                                                                     value={set.weight}
                                                                     onFocus={(e) => e.target.select()}
                                                                     onChange={(e) => {
@@ -224,6 +219,8 @@ const History = ({ history, onUpdate }) => {
                                                             <div style={{ position: 'relative' }}>
                                                                 <input
                                                                     type="number"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9]*"
                                                                     value={set.reps}
                                                                     onFocus={(e) => e.target.select()}
                                                                     onChange={(e) => {

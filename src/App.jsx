@@ -20,6 +20,8 @@ function App() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeWorkoutDay, setActiveWorkoutDay] = useState(null);
+  const [isWorkoutMinimized, setIsWorkoutMinimized] = useState(false);
+  const [workoutStartTime, setWorkoutStartTime] = useState(null);
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
@@ -192,27 +194,7 @@ function App() {
       );
     }
 
-    // Active workout
-    if (activeWorkoutDay !== null) {
-      const programDay = activeTemplate.days[activeWorkoutDay];
-      return (
-        <WorkoutLogger
-          programDay={programDay}
-          history={history}
-          profile={profile}
-          onFinish={async () => {
-            setActiveWorkoutDay(null);
-            setDataLoading(true);
-            const h = await fetchHistory(user.uid);
-            setHistory(h || []);
-            setDataLoading(false);
-            setActiveTab('history');
-          }}
-          onCancel={() => setActiveWorkoutDay(null)}
-        />
-      );
-    }
-
+    // Active workout logic moved outside renderContent so it acts as an overlay
     // New user onboarding
     if (profile && profile.isNewUser) {
       return (
@@ -239,7 +221,11 @@ function App() {
           <Dashboard
             history={history}
             profile={profile}
-            onStartWorkout={(idx) => setActiveWorkoutDay(idx)}
+            onStartWorkout={(idx) => {
+              setActiveWorkoutDay(idx);
+              setWorkoutStartTime(Date.now());
+              setIsWorkoutMinimized(false);
+            }}
             activeTemplate={activeTemplate}
             templates={templates}
             onSelectTemplate={handleSelectTemplate}
@@ -268,7 +254,11 @@ function App() {
           <Dashboard
             history={history}
             profile={profile}
-            onStartWorkout={(idx) => setActiveWorkoutDay(idx)}
+            onStartWorkout={(idx) => {
+              setActiveWorkoutDay(idx);
+              setWorkoutStartTime(Date.now());
+              setIsWorkoutMinimized(false);
+            }}
             activeTemplate={activeTemplate}
             templates={templates}
             onSelectTemplate={handleSelectTemplate}
@@ -305,6 +295,56 @@ function App() {
         {renderContent()}
       </main>
 
+      {/* Workout Logger Overlay */}
+      {activeWorkoutDay !== null && (
+        <div style={{ display: isWorkoutMinimized ? 'none' : 'block', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2000, background: 'var(--bg-color)', overflowY: 'auto' }}>
+          <WorkoutLogger
+            programDay={activeTemplate.days[activeWorkoutDay]}
+            history={history}
+            profile={profile}
+            exerciseDb={exerciseDb}
+            workoutStartTime={workoutStartTime}
+            onFinish={async () => {
+              setActiveWorkoutDay(null);
+              setIsWorkoutMinimized(false);
+              setWorkoutStartTime(null);
+              setDataLoading(true);
+              const h = await fetchHistory(user.uid);
+              setHistory(h || []);
+              setDataLoading(false);
+              setActiveTab('history');
+            }}
+            onCancel={() => {
+              setActiveWorkoutDay(null);
+              setIsWorkoutMinimized(false);
+              setWorkoutStartTime(null);
+            }}
+            onMinimize={() => setIsWorkoutMinimized(true)}
+          />
+        </div>
+      )}
+
+      {/* Active Workout Footer when minimized */}
+      {isWorkoutMinimized && activeWorkoutDay !== null && activeTemplate.days[activeWorkoutDay] && (
+        <div className="fade-in" onClick={() => setIsWorkoutMinimized(false)} style={{
+          position: 'fixed', bottom: '85px', left: '1rem', right: '1rem',
+          background: 'var(--panel-color)', border: '1px solid var(--accent-color)',
+          padding: '0.8rem 1.2rem', display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', zIndex: 1000, borderRadius: '16px',
+          boxShadow: '0 8px 16px rgba(0,0,0,0.2)', cursor: 'pointer'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{activeTemplate.days[activeWorkoutDay].name}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 700 }}>Workout Active • Tap to resume</div>
+          </div>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <div style={{ width: '4px', height: '12px', background: 'var(--accent-color)', borderRadius: '2px', animation: 'bar 1s infinite ease-in-out' }}></div>
+            <div style={{ width: '4px', height: '18px', background: 'var(--accent-color)', borderRadius: '2px', animation: 'bar 1s infinite ease-in-out 0.2s' }}></div>
+            <div style={{ width: '4px', height: '12px', background: 'var(--accent-color)', borderRadius: '2px', animation: 'bar 1s infinite ease-in-out 0.4s' }}></div>
+          </div>
+        </div>
+      )}
+
       {showWeightModal && (
         <WeightLogModal
           currentWeight={profile?.bodyweight}
@@ -314,7 +354,7 @@ function App() {
         />
       )}
 
-      {activeWorkoutDay === null && editingTemplate === null && !(profile && profile.isNewUser) && (
+      {(!activeWorkoutDay || isWorkoutMinimized) && editingTemplate === null && !(profile && profile.isNewUser) && (
         <nav className="bottom-nav">
           <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
             <LayoutDashboard size={22} />
