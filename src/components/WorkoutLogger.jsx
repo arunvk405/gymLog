@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { saveWorkout } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
-import { Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { toast } from 'react-hot-toast';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore'; // Corrected storage to firestore
 
@@ -265,6 +266,17 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         setWorkout(newWorkout);
     };
 
+    const moveExercise = (dayIdx, exIdx, direction) => {
+        // Legacy arrow-based move function removed
+    };
+
+    const handleDragEnd = (result) => {
+        if (!result.destination) return;
+        const newExercises = [...workout.exercises];
+        const [reorderedItem] = newExercises.splice(result.source.index, 1);
+        newExercises.splice(result.destination.index, 0, reorderedItem);
+        setWorkout({ ...workout, exercises: newExercises });
+    };
     const handleAddExercise = (exercise) => {
         const newEx = {
             id: exercise.id,
@@ -364,7 +376,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
 
                 {/* GLOBAL WORKOUT ADJUSTMENT */}
                 <div style={{ padding: '0 1rem', marginBottom: '1rem' }}>
-                    <button 
+                    <button
                         onClick={() => {
                             const newWorkout = { ...workout };
                             newWorkout.exercises.forEach(ex => {
@@ -395,213 +407,237 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                         <Plus size={16} /> Increase Entire Workout (+2.5kg)
                     </button>
                 </div>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="workout-exercises">
+                        {(provided) => (
+                            <div {...provided.droppableProps} ref={provided.innerRef}>
+                                {workout.exercises.map((ex, exIdx) => (
+                                    <Draggable key={`${ex.id}-${exIdx}`} draggableId={`${ex.id}-${exIdx}`} index={exIdx}>
+                                        {(provided, snapshot) => (
+                                            <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className="panel"
+                                                style={{
+                                                    ...provided.draggableProps.style,
+                                                    padding: '1.2rem',
+                                                    marginBottom: '1.5rem',
+                                                    borderRadius: '24px',
+                                                    border: snapshot.isDragging ? '2px solid var(--accent-color)' : '1px solid var(--border-color)',
+                                                    background: snapshot.isDragging ? 'var(--bg-color)' : 'var(--panel-color)',
+                                                    boxShadow: snapshot.isDragging ? '0 12px 32px rgba(0,0,0,0.2)' : 'none',
+                                                    zIndex: snapshot.isDragging ? 1000 : 1
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div {...provided.dragHandleProps} style={{ cursor: 'grab', color: 'var(--text-secondary)', padding: '4px' }}>
+                                                            <GripVertical size={20} />
+                                                        </div>
+                                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-color)', fontWeight: 800 }}>{ex.name}</h3>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>{ex.sets.filter(s => s.completed).length} / {ex.sets.length} DONE</div>
+                                                        <button
+                                                            onClick={() => selectAllSets(exIdx)}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                color: 'var(--accent-color)',
+                                                                fontSize: '0.75rem',
+                                                                padding: 0,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                cursor: 'pointer',
+                                                                fontWeight: 700,
+                                                                marginLeft: 'auto'
+                                                            }}
+                                                        >
+                                                            <CheckCircle2 size={14} />
+                                                            {ex.sets.every(s => s.completed) ? 'Deselect' : 'Select All'}
+                                                        </button>
+                                                    </div>
+                                                </div>
 
-                {workout.exercises.map((ex, exIdx) => (
-                    <div key={ex.id || exIdx} className="panel" style={{ padding: '1.2rem', marginBottom: '1.5rem', borderRadius: '24px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-color)', fontWeight: 800 }}>{ex.name}</h3>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>{ex.sets.filter(s => s.completed).length} / {ex.sets.length} DONE</div>
-                                <button
-                                    onClick={() => selectAllSets(exIdx)}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--accent-color)',
-                                        fontSize: '0.75rem',
-                                        padding: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        cursor: 'pointer',
-                                        fontWeight: 700,
-                                        marginLeft: 'auto'
-                                    }}
-                                >
-                                    <CheckCircle2 size={14} />
-                                    {ex.sets.every(s => s.completed) ? 'Deselect' : 'Select All'}
-                                </button>
+                                                {/* Quick-bump row for entire exercise */}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem', flexWrap: 'wrap', paddingLeft: '32px' }}>
+                                                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7 }}>Bump All Sets:</span>
+                                                    {[-2.5, 2.5, 3, 5, 10].map(amount => (
+                                                        <button
+                                                            key={amount}
+                                                            onClick={() => bumpAllWeights(exIdx, amount)}
+                                                            style={{
+                                                                padding: '0.25rem 0.6rem',
+                                                                borderRadius: '8px',
+                                                                background: amount > 0 ? 'var(--accent-color)' : 'var(--muted-color)',
+                                                                border: 'none',
+                                                                color: amount > 0 ? 'white' : 'var(--text-primary)',
+                                                                fontWeight: 800,
+                                                                fontSize: '0.7rem',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            {amount > 0 ? '+' : ''}{amount}kg
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8, paddingLeft: '32px' }}>
+                                                    <span>Set</span>
+                                                    <span style={{ textAlign: 'center' }}>KG</span>
+                                                    <span style={{ textAlign: 'center' }}>Reps</span>
+                                                    <span style={{ textAlign: 'center' }}>Log</span>
+                                                    <span></span>
+                                                </div>
+
+                                                <div style={{ paddingLeft: '32px' }}>
+                                                    {ex.sets.map((set, setIdx) => (
+                                                        <React.Fragment key={set.id}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.8rem', alignItems: 'center', marginBottom: '1.2rem' }}>
+                                                                <span style={{ color: 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>{setIdx + 1}</span>
+
+                                                                <div style={{ position: 'relative' }}>
+                                                                    <input
+                                                                        type="number"
+                                                                        inputMode="decimal"
+                                                                        value={set.weight}
+                                                                        onFocus={(e) => e.target.select()}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value;
+                                                                            updateSet(exIdx, setIdx, 'weight', val === '' ? '' : parseFloat(val));
+                                                                        }}
+                                                                        onBlur={(e) => {
+                                                                            if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'weight', 0);
+                                                                        }}
+                                                                        step="0.5"
+                                                                        style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
+                                                                    />
+                                                                    <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                                                                        LAST: {set.prevWeight}kg
+                                                                    </div>
+                                                                </div>
+
+                                                                <input
+                                                                    type="number"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9]*"
+                                                                    value={set.reps}
+                                                                    onFocus={(e) => e.target.select()}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        updateSet(exIdx, setIdx, 'reps', val === '' ? '' : parseInt(val));
+                                                                    }}
+                                                                    onBlur={(e) => {
+                                                                        if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'reps', 0);
+                                                                    }}
+                                                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
+                                                                />
+
+                                                                <button
+                                                                    onClick={() => toggleSet(exIdx, setIdx)}
+                                                                    style={{
+                                                                        backgroundColor: set.completed ? 'var(--success-color)' : 'transparent',
+                                                                        border: `2px solid ${set.completed ? 'var(--success-color)' : 'var(--border-color)'}`,
+                                                                        padding: '0.4rem',
+                                                                        borderRadius: '50%',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        color: set.completed ? 'white' : 'transparent',
+                                                                        width: '34px',
+                                                                        height: '34px',
+                                                                        justifySelf: 'center',
+                                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                                    }}
+                                                                >
+                                                                    <Check size={16} />
+                                                                </button>
+
+                                                                {/* Delete set */}
+                                                                <button
+                                                                    onClick={() => deleteSet(exIdx, setIdx)}
+                                                                    style={{
+                                                                        background: 'none', border: 'none', cursor: 'pointer',
+                                                                        padding: '4px', justifySelf: 'center',
+                                                                        color: ex.sets.length > 1 ? 'var(--error-color)' : 'var(--border-color)',
+                                                                        opacity: ex.sets.length > 1 ? 0.6 : 0.2
+                                                                    }}
+                                                                    disabled={ex.sets.length <= 1}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+
+                                                            {/* COMPACT INLINE REST TIMER */}
+                                                            {timerEndTime && timerLocation.exIdx === exIdx && timerLocation.setIdx === setIdx && (
+                                                                <div style={{
+                                                                    gridColumn: '1 / -1',
+                                                                    background: 'var(--muted-color)',
+                                                                    borderRadius: '12px',
+                                                                    padding: '0.4rem 0.8rem',
+                                                                    margin: '0 auto 1.2rem auto',
+                                                                    width: '90%',
+                                                                    border: '1px solid var(--border-color)',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    gap: '6px',
+                                                                    animation: 'slide-down 0.2s ease-out'
+                                                                }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                            <Loader2 size={12} className="spin" color="var(--accent-color)" />
+                                                                            <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--accent-color)', letterSpacing: '0.5px' }}>{formatTime(timeLeft)}</span>
+                                                                            <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', opacity: 0.8 }}>Resting</span>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setTimerEndTime(prev => prev + 30000);
+                                                                                    setTotalRestTime(prev => prev + 30);
+                                                                                }}
+                                                                                style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--panel-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.6rem' }}
+                                                                            >
+                                                                                +30s
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => setTimerEndTime(null)}
+                                                                                style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--accent-color)', border: 'none', color: 'white', fontWeight: 800, fontSize: '0.6rem' }}
+                                                                            >
+                                                                                SKIP
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{ height: '3px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                                        <div style={{
+                                                                            height: '100%',
+                                                                            background: 'var(--accent-color)',
+                                                                            width: `${(timeLeft / totalRestTime) * 100}%`,
+                                                                            transition: 'width 0.25s linear'
+                                                                        }} />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
+
+                                                <button
+                                                    onClick={() => addSet(exIdx)}
+                                                    className="secondary"
+                                                    style={{ width: '100%', borderStyle: 'dashed', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0.8rem', fontWeight: 700, fontSize: '0.85rem' }}
+                                                >
+                                                    <Plus size={16} /> Add Set
+                                                </button>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
                             </div>
-                        </div>
-
-                        {/* Quick-bump row for entire exercise */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7 }}>Bump All Sets:</span>
-                            {[-2.5, 2.5, 3, 5, 10].map(amount => (
-                                <button
-                                    key={amount}
-                                    onClick={() => bumpAllWeights(exIdx, amount)}
-                                    style={{
-                                        padding: '0.25rem 0.6rem',
-                                        borderRadius: '8px',
-                                        background: amount > 0 ? 'var(--accent-color)' : 'var(--muted-color)',
-                                        border: 'none',
-                                        color: amount > 0 ? 'white' : 'var(--text-primary)',
-                                        fontWeight: 800,
-                                        fontSize: '0.7rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {amount > 0 ? '+' : ''}{amount}kg
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8 }}>
-                            <span>Set</span>
-                            <span style={{ textAlign: 'center' }}>KG</span>
-                            <span style={{ textAlign: 'center' }}>Reps</span>
-                            <span style={{ textAlign: 'center' }}>Log</span>
-                            <span></span>
-                        </div>
-
-                        {ex.sets.map((set, setIdx) => (
-                            <React.Fragment key={set.id}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.8rem', alignItems: 'center', marginBottom: '1.2rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>{setIdx + 1}</span>
-
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            type="number"
-                                            inputMode="decimal"
-                                            value={set.weight}
-                                            onFocus={(e) => e.target.select()}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                updateSet(exIdx, setIdx, 'weight', val === '' ? '' : parseFloat(val));
-                                            }}
-                                            onBlur={(e) => {
-                                                if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'weight', 0);
-                                            }}
-                                            step="0.5"
-                                            style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
-                                        />
-                                        <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                                            LAST: {set.prevWeight}kg
-                                        </div>
-                                    </div>
-
-                                    <input
-                                        type="number"
-                                        inputMode="numeric"
-                                        pattern="[0-9]*"
-                                        value={set.reps}
-                                        onFocus={(e) => e.target.select()}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateSet(exIdx, setIdx, 'reps', val === '' ? '' : parseInt(val));
-                                        }}
-                                        onBlur={(e) => {
-                                            if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'reps', 0);
-                                        }}
-                                        style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
-                                    />
-
-                                    <button
-                                        onClick={() => toggleSet(exIdx, setIdx)}
-                                        style={{
-                                            backgroundColor: set.completed ? 'var(--success-color)' : 'transparent',
-                                            border: `2px solid ${set.completed ? 'var(--success-color)' : 'var(--border-color)'}`,
-                                            padding: '0.4rem',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: set.completed ? 'white' : 'transparent',
-                                            width: '34px',
-                                            height: '34px',
-                                            justifySelf: 'center',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                        }}
-                                    >
-                                        <Check size={16} />
-                                    </button>
-
-                                    {/* Delete set */}
-                                    <button
-                                        onClick={() => deleteSet(exIdx, setIdx)}
-                                        style={{
-                                            background: 'none', border: 'none', cursor: 'pointer',
-                                            padding: '4px', justifySelf: 'center',
-                                            color: ex.sets.length > 1 ? 'var(--error-color)' : 'var(--border-color)',
-                                            opacity: ex.sets.length > 1 ? 0.6 : 0.2
-                                        }}
-                                        disabled={ex.sets.length <= 1}
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-
-                                {/* COMPACT INLINE REST TIMER */}
-                                {timerEndTime && timerLocation.exIdx === exIdx && timerLocation.setIdx === setIdx && (
-                                    <div style={{
-                                        gridColumn: '1 / -1',
-                                        background: 'var(--muted-color)',
-                                        borderRadius: '12px',
-                                        padding: '0.4rem 0.8rem',
-                                        margin: '0 auto 1.2rem auto',
-                                        width: '90%',
-                                        border: '1px solid var(--border-color)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '6px',
-                                        animation: 'slide-down 0.2s ease-out'
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <Loader2 size={12} className="spin" color="var(--accent-color)" />
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--accent-color)', letterSpacing: '0.5px' }}>{formatTime(timeLeft)}</span>
-                                                <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', opacity: 0.8 }}>Resting</span>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
-                                                <button
-                                                    onClick={() => {
-                                                        setTimerEndTime(prev => prev + 30000);
-                                                        setTotalRestTime(prev => prev + 30);
-                                                    }}
-                                                    style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--panel-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.6rem' }}
-                                                >
-                                                    +30s
-                                                </button>
-                                                <button
-                                                    onClick={() => setTimerEndTime(null)}
-                                                    style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--accent-color)', border: 'none', color: 'white', fontWeight: 800, fontSize: '0.6rem' }}
-                                                >
-                                                    SKIP
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div style={{ height: '3px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                            <div style={{
-                                                height: '100%',
-                                                background: 'var(--accent-color)',
-                                                width: `${(timeLeft / totalRestTime) * 100}%`,
-                                                transition: 'width 0.25s linear'
-                                            }} />
-                                        </div>
-                                    </div>
-                                )}
-                            </React.Fragment>
-                        ))}
-
-                        <button
-                            className="secondary"
-                            onClick={() => addSet(exIdx)}
-                            style={{
-                                width: '100%',
-                                marginTop: '0.5rem',
-                                borderStyle: 'dashed',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                fontSize: '0.85rem'
-                            }}
-                        >
-                            <Plus size={16} /> Add New Set
-                        </button>
-                    </div>
-                ))}
+                        )}
+                    </Droppable>
+                </DragDropContext>
 
                 <div style={{ padding: '0 1rem 2rem 1rem' }}>
                     <button

@@ -55,12 +55,14 @@ function App() {
       const loadData = async () => {
         setDataLoading(true);
         try {
-          // Fetch data individually to handle partial failures (like permission errors on specific collections)
-          const h = await fetchHistory(user.uid).catch(() => []);
-          const p = await fetchProfile(user.uid).catch(() => null);
-          const t = await fetchTemplates(user.uid).catch(() => []);
-          const wh = await fetchWeightHistory(user.uid).catch(() => []);
-          const exercises = await fetchExercises().catch(() => null);
+          // Fetch data in parallel for significantly faster loading
+          const [h, p, t, wh, exercises] = await Promise.all([
+            fetchHistory(user.uid).catch(() => []),
+            fetchProfile(user.uid).catch(() => null),
+            fetchTemplates(user.uid).catch(() => []),
+            fetchWeightHistory(user.uid).catch(() => []),
+            fetchExercises().catch(() => null)
+          ]);
 
           setHistory(h || []);
           setProfile(p);

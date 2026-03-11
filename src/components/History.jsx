@@ -12,6 +12,14 @@ const History = ({ history, onUpdate }) => {
     const [editData, setEditData] = useState(null);
     const [saving, setSaving] = useState(false);
 
+    // Date filtering (Default 2 weeks)
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 14);
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+
     const toggleExpand = (id) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -55,15 +63,12 @@ const History = ({ history, onUpdate }) => {
         }
     };
 
-    if (!history || history.length === 0) {
-        return (
-            <div className="fade-in" style={{ textAlign: 'center', marginTop: '3rem' }}>
-                <Calendar size={48} color="var(--border-color)" style={{ marginBottom: '1rem' }} />
-                <h2 style={{ fontSize: '1.25rem' }}>No Workouts Yet</h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Your lifting legacy starts with your first session.</p>
-            </div>
-        );
-    }
+    // Filter history based on date range
+    const filteredHistory = (history || []).filter(session => {
+        if (!session.date) return false;
+        const sessionDate = session.date.split('T')[0];
+        return sessionDate >= startDate && sessionDate <= endDate;
+    });
 
     const formatTime = (seconds) => {
         if (!seconds) return null;
@@ -77,17 +82,65 @@ const History = ({ history, onUpdate }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.5rem', margin: 0 }}>History</h2>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
-                    <button className="secondary" onClick={() => exportToCSV(history)} style={{ padding: '0.5rem' }}>
+                    <button className="secondary" onClick={() => exportToCSV(filteredHistory)} style={{ padding: '0.5rem' }}>
                         <Download size={18} />
                     </button>
-                    <button className="secondary" onClick={() => generatePDFReport(history)} style={{ padding: '0.5rem' }}>
+                    <button className="secondary" onClick={() => generatePDFReport(filteredHistory)} style={{ padding: '0.5rem' }}>
                         <FileText size={18} />
                     </button>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {history.map(session => {
+            {/* DATE RANGE FILTER */}
+            <div className="panel" style={{ padding: '1rem', marginBottom: '1.5rem', background: 'var(--muted-color)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <Calendar size={16} color="var(--accent-color)" />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)' }}>Filter Period</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', top: '10px', left: '12px', fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', zIndex: 1 }}>FROM</span>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            style={{ width: '100%', padding: '24px 12px 6px 12px', fontSize: '0.85rem', fontWeight: 800, borderRadius: '12px', background: 'var(--panel-color)' }}
+                        />
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', top: '10px', left: '12px', fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', zIndex: 1 }}>TO</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            style={{ width: '100%', padding: '24px 12px 6px 12px', fontSize: '0.85rem', fontWeight: 800, borderRadius: '12px', background: 'var(--panel-color)' }}
+                        />
+                    </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                         Showing <span style={{ color: 'var(--accent-color)' }}>{filteredHistory.length}</span> workouts
+                    </div>
+                    <button 
+                        onClick={() => {
+                            setStartDate('2000-01-01');
+                            setEndDate(new Date().toISOString().split('T')[0]);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                    >
+                        Show All Time
+                    </button>
+                </div>
+            </div>
+
+            {filteredHistory.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                    <Calendar size={40} color="var(--border-color)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>No workouts found for this period.</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {filteredHistory.map(session => {
                     const isEditing = editingId === session.id;
                     const data = isEditing ? editData : session;
 
@@ -274,7 +327,8 @@ const History = ({ history, onUpdate }) => {
                     );
                 })}
             </div>
-        </div>
+        )}
+    </div>
     );
 };
 

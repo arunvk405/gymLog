@@ -1,7 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
-import { MUSCLE_GROUPS, DEFAULT_TEMPLATE } from '../data/program';
-import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
     const [search, setSearch] = useState('');
@@ -163,6 +161,43 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
         setDays(updated);
     };
 
+    const moveExercise = (dayIdx, exIdx, direction) => {
+        const updated = [...days];
+        const dayExercises = [...updated[dayIdx].exercises];
+        const targetIdx = direction === 'up' ? exIdx - 1 : exIdx + 1;
+        
+        if (targetIdx < 0 || targetIdx >= dayExercises.length) return;
+        
+        const [moved] = dayExercises.splice(exIdx, 1);
+        dayExercises.splice(targetIdx, 0, moved);
+        updated[dayIdx].exercises = dayExercises;
+        setDays(updated);
+    };
+
+    const moveDay = (idx, direction) => {
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= days.length) return;
+        
+        const updated = [...days];
+        const [moved] = updated.splice(idx, 1);
+        updated.splice(targetIdx, 0, moved);
+        
+        // Re-number day sequence
+        const renumbered = updated.map((d, i) => ({ ...d, day: i + 1 }));
+        setDays(renumbered);
+        setExpandedDay(targetIdx);
+    };
+
+    const handleDragEnd = (result, dayIdx) => {
+        if (!result.destination) return;
+        const updated = [...days];
+        const dayExercises = [...updated[dayIdx].exercises];
+        const [reorderedItem] = dayExercises.splice(result.source.index, 1);
+        dayExercises.splice(result.destination.index, 0, reorderedItem);
+        updated[dayIdx].exercises = dayExercises;
+        setDays(updated);
+    };
+
     const handleSave = () => {
         if (!name.trim()) { toast.error('Please enter a template name'); return; }
         if (days.length === 0) { toast.error('Add at least one training day'); return; }
@@ -300,7 +335,25 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                                 </div>
                             </div>
                         </div>
-                        {expandedDay === dayIdx ? <ChevronUp size={18} color="var(--accent-color)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginRight: '8px' }}>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); moveDay(dayIdx, 'up'); }}
+                                    disabled={dayIdx === 0}
+                                    style={{ background: 'none', border: 'none', padding: 0, opacity: dayIdx === 0 ? 0.3 : 1, color: 'var(--text-secondary)' }}
+                                >
+                                    <ChevronUp size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); moveDay(dayIdx, 'down'); }}
+                                    disabled={dayIdx === days.length - 1}
+                                    style={{ background: 'none', border: 'none', padding: 0, opacity: dayIdx === days.length - 1 ? 0.3 : 1, color: 'var(--text-secondary)' }}
+                                >
+                                    <ChevronDown size={16} />
+                                </button>
+                            </div>
+                            {expandedDay === dayIdx ? <ChevronUp size={18} color="var(--accent-color)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
+                        </div>
                     </div>
 
                     {/* Expanded Day Content */}
@@ -320,57 +373,88 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                             </div>
 
                             {/* Exercise List */}
-                            {day.exercises.map((ex, exIdx) => (
-                                <div key={ex.id || exIdx} style={{
-                                    background: 'var(--muted-color)', borderRadius: '14px', padding: '1rem',
-                                    marginBottom: '0.8rem', border: '1px solid var(--border-color)'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <Dumbbell size={14} color="var(--accent-color)" />
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                                {ex.name}
-                                            </span>
+                            <DragDropContext onDragEnd={(result) => handleDragEnd(result, dayIdx)}>
+                                <Droppable droppableId={`day-${dayIdx}`}>
+                                    {(provided) => (
+                                        <div {...provided.droppableProps} ref={provided.innerRef}>
+                                            {day.exercises.map((ex, exIdx) => (
+                                                <Draggable 
+                                                    key={`${ex.id}-${exIdx}`} 
+                                                    draggableId={`${ex.id}-${exIdx}`} 
+                                                    index={exIdx}
+                                                >
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            style={{
+                                                                ...provided.draggableProps.style,
+                                                                background: snapshot.isDragging ? 'var(--bg-color)' : 'var(--muted-color)',
+                                                                borderRadius: '14px',
+                                                                padding: '1rem',
+                                                                marginBottom: '0.8rem',
+                                                                border: snapshot.isDragging ? '2px solid var(--accent-color)' : '1px solid var(--border-color)',
+                                                                boxShadow: snapshot.isDragging ? '0 8px 24px rgba(0,0,0,0.2)' : 'none',
+                                                                opacity: snapshot.isDragging ? 0.9 : 1,
+                                                                zIndex: snapshot.isDragging ? 1000 : 1
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    <div {...provided.dragHandleProps} style={{ padding: '0 4px', cursor: 'grab', color: 'var(--text-secondary)' }}>
+                                                                        <GripVertical size={18} />
+                                                                    </div>
+                                                                    <Dumbbell size={14} color="var(--accent-color)" />
+                                                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                                        {ex.name}
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => removeExercise(dayIdx, exIdx)}
+                                                                    style={{ padding: '4px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)' }}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.6rem', paddingLeft: '28px' }}>
+                                                                {ex.muscleGroup} · {ex.type}
+                                                            </div>
+                                                            
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.4rem', paddingLeft: '28px' }}>
+                                                                <div>
+                                                                    <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>SETS</label>
+                                                                    <input type="number" min="1" max="10" value={ex.sets}
+                                                                        onChange={(e) => updateExercise(dayIdx, exIdx, 'sets', parseInt(e.target.value) || 1)}
+                                                                        style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
+                                                                </div>
+                                                                <div>
+                                                                    <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>REPS</label>
+                                                                    <input type="number" min="1" max="100" value={ex.reps}
+                                                                        onChange={(e) => updateExercise(dayIdx, exIdx, 'reps', parseInt(e.target.value) || 1)}
+                                                                        style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
+                                                                </div>
+                                                                <div>
+                                                                    <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>WEIGHT</label>
+                                                                    <input type="number" min="0" step="0.5" value={ex.startWeight}
+                                                                        onChange={(e) => updateExercise(dayIdx, exIdx, 'startWeight', parseFloat(e.target.value) || 0)}
+                                                                        style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
+                                                                </div>
+                                                                <div>
+                                                                    <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>+KG</label>
+                                                                    <input type="number" min="0" step="0.5" value={ex.progression}
+                                                                        onChange={(e) => updateExercise(dayIdx, exIdx, 'progression', parseFloat(e.target.value) || 0)}
+                                                                        style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </Draggable>
+                                            ))}
+                                            {provided.placeholder}
                                         </div>
-                                        <button
-                                            onClick={() => removeExercise(dayIdx, exIdx)}
-                                            style={{ padding: '4px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)' }}
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>
-                                        {ex.muscleGroup} · {ex.type}
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.4rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>SETS</label>
-                                            <input type="number" min="1" max="10" value={ex.sets}
-                                                onChange={(e) => updateExercise(dayIdx, exIdx, 'sets', parseInt(e.target.value) || 1)}
-                                                style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>REPS</label>
-                                            <input type="number" min="1" max="100" value={ex.reps}
-                                                onChange={(e) => updateExercise(dayIdx, exIdx, 'reps', parseInt(e.target.value) || 1)}
-                                                style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>WEIGHT</label>
-                                            <input type="number" min="0" step="0.5" value={ex.startWeight}
-                                                onChange={(e) => updateExercise(dayIdx, exIdx, 'startWeight', parseFloat(e.target.value) || 0)}
-                                                style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>+KG</label>
-                                            <input type="number" min="0" step="0.5" value={ex.progression}
-                                                onChange={(e) => updateExercise(dayIdx, exIdx, 'progression', parseFloat(e.target.value) || 0)}
-                                                style={{ textAlign: 'center', fontSize: '0.85rem', padding: '0.4rem' }} />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
 
                             {/* Add Exercise from Library */}
                             <button className="secondary" onClick={() => setPickingForDay(dayIdx)} style={{
