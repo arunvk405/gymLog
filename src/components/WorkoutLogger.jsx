@@ -7,24 +7,44 @@ import { toast } from 'react-hot-toast';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore'; // Corrected storage to firestore
 
-// Global audio context for mobile support
-let beepAudio = new Audio('/beep.wav');
-let beepUnlocked = false;
+// Web Audio API — uses 'ambient' audio session so it never interrupts background music.
+// HTMLMediaElement (new Audio) triggers system 'playback' which ducks/pauses other audio.
+let audioCtx = null;
+let beepBuffer = null;
 
+// Lazily create the AudioContext on first user gesture (required by browsers)
+const getAudioCtx = () => {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+};
+
+// Pre-load the beep buffer so playback is instant
+const loadBeepBuffer = async () => {
+    try {
+        const ctx = getAudioCtx();
+        const response = await fetch('/beep.wav');
+        const arrayBuffer = await response.arrayBuffer();
+        beepBuffer = await ctx.decodeAudioData(arrayBuffer);
+    } catch (e) {
+        console.error('Failed to load beep buffer:', e);
+    }
+};
+
+// Called on first user gesture to unlock AudioContext and pre-load the buffer
 const initAudio = () => {
     try {
-        if (!beepUnlocked) {
-            // Unmute HTML5 Audio by playing it silently during a user gesture
-            beepAudio.volume = 0;
-            beepAudio.play().then(() => {
-                beepAudio.pause();
-                beepAudio.currentTime = 0;
-                beepAudio.volume = 1;
-                beepUnlocked = true;
-            }).catch(e => console.log("Audio unlock explicitly prevented:", e));
+        const ctx = getAudioCtx();
+        // Resume the context if it was suspended (autoplay policy)
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+        if (!beepBuffer) {
+            loadBeepBuffer();
         }
     } catch (e) {
-        console.error("Audio Init Failed:", e);
+        console.error('Audio Init Failed:', e);
     }
 };
 
@@ -47,8 +67,20 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
 
     const [workout, setWorkout] = useState(() => {
         const exercises = programDay.exercises.map(ex => {
-            const lastSession = [...history].reverse().find(s => s.exercises.some(e => e.id === ex.id || (ex.syncWith && e.id === ex.syncWith)));
-            const lastEx = lastSession?.exercises.find(e => e.id === ex.id || (ex.syncWith && e.id === ex.syncWith));
+            // history is already sorted newest-first from Firestore — no reverse() needed.
+            // Also fall back to name matching in case template IDs differ across versions.
+            const lastSession = history.find(s =>
+                s.exercises.some(e =>
+                    e.id === ex.id ||
+                    (ex.syncWith && e.id === ex.syncWith) ||
+                    e.name?.toLowerCase() === ex.name?.toLowerCase()
+                )
+            );
+            const lastEx = lastSession?.exercises.find(e =>
+                e.id === ex.id ||
+                (ex.syncWith && e.id === ex.syncWith) ||
+                e.name?.toLowerCase() === ex.name?.toLowerCase()
+            );
 
             return {
                 ...ex,
@@ -69,10 +101,13 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                         suggestedWeight = prevWeight + ex.progression;
                     }
 
+                    // Use previous session reps if available, otherwise fall back to program target
+                    const prevReps = prevSet ? prevSet.reps : ex.reps;
+
                     return {
                         id: Date.now() + i,
                         weight: suggestedWeight,
-                        reps: ex.reps,
+                        reps: prevReps,
                         completed: false,
                         prevWeight: prevWeight
                     };
@@ -96,15 +131,29 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         return () => clearInterval(int);
     }, [workoutStartTime]);
 
-    // Play Beep Sound
+    // Play Beep Sound via Web Audio API (does NOT interrupt background music)
     const playBeep = () => {
         try {
-            if (beepAudio) {
-                beepAudio.currentTime = 0;
-                beepAudio.play().catch(e => console.error("Audio beep failed", e));
+            const ctx = getAudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+            if (beepBuffer) {
+                const source = ctx.createBufferSource();
+                source.buffer = beepBuffer;
+                source.connect(ctx.destination);
+                source.start(0);
+            } else {
+                // Buffer not loaded yet — try to load and play after a short delay
+                loadBeepBuffer().then(() => {
+                    if (beepBuffer) {
+                        const source = ctx.createBufferSource();
+                        source.buffer = beepBuffer;
+                        source.connect(ctx.destination);
+                        source.start(0);
+                    }
+                });
             }
         } catch (e) {
-            console.error("Audio beep failed", e);
+            console.error('Audio beep failed', e);
         }
     };
 
@@ -177,6 +226,24 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         const exercise = newWorkout.exercises[exerciseIndex];
         if (exercise.sets.length <= 1) return; // Keep at least 1 set
         exercise.sets = exercise.sets.filter((_, i) => i !== setIndex);
+        setWorkout(newWorkout);
+    };
+
+    // Bumps all sets in an exercise by a fixed amount
+    const bumpAllWeights = (exerciseIndex, amount = 2.5) => {
+        const newWorkout = { ...workout };
+        newWorkout.exercises[exerciseIndex].sets = newWorkout.exercises[exerciseIndex].sets.map(s => ({
+            ...s,
+            weight: Math.round((parseFloat(s.weight || 0) + amount) * 100) / 100
+        }));
+        setWorkout(newWorkout);
+    };
+
+    // Bumps weight for a specific set
+    const bumpSetWeight = (exerciseIndex, setIndex, amount) => {
+        const newWorkout = { ...workout };
+        const set = newWorkout.exercises[exerciseIndex].sets[setIndex];
+        set.weight = Math.round((parseFloat(set.weight || 0) + amount) * 100) / 100;
         setWorkout(newWorkout);
     };
 
@@ -295,9 +362,43 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                     </div>
                 </div>
 
+                {/* GLOBAL WORKOUT ADJUSTMENT */}
+                <div style={{ padding: '0 1rem', marginBottom: '1rem' }}>
+                    <button 
+                        onClick={() => {
+                            const newWorkout = { ...workout };
+                            newWorkout.exercises.forEach(ex => {
+                                ex.sets = ex.sets.map(s => ({
+                                    ...s,
+                                    weight: Math.round((parseFloat(s.weight || 0) + 2.5) * 100) / 100
+                                }));
+                            });
+                            setWorkout(newWorkout);
+                        }}
+                        style={{
+                            width: '100%',
+                            padding: '0.8rem',
+                            borderRadius: '12px',
+                            background: 'var(--muted-color)',
+                            border: '1px solid var(--accent-color)',
+                            color: 'var(--accent-color)',
+                            fontWeight: 800,
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
+                        }}
+                    >
+                        <Plus size={16} /> Increase Entire Workout (+2.5kg)
+                    </button>
+                </div>
+
                 {workout.exercises.map((ex, exIdx) => (
                     <div key={ex.id || exIdx} className="panel" style={{ padding: '1.2rem', marginBottom: '1.5rem', borderRadius: '24px', border: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-color)', fontWeight: 800 }}>{ex.name}</h3>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>{ex.sets.filter(s => s.completed).length} / {ex.sets.length} DONE</div>
@@ -321,6 +422,29 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                     {ex.sets.every(s => s.completed) ? 'Deselect' : 'Select All'}
                                 </button>
                             </div>
+                        </div>
+
+                        {/* Quick-bump row for entire exercise */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7 }}>Bump All Sets:</span>
+                            {[-2.5, 2.5, 3, 5, 10].map(amount => (
+                                <button
+                                    key={amount}
+                                    onClick={() => bumpAllWeights(exIdx, amount)}
+                                    style={{
+                                        padding: '0.25rem 0.6rem',
+                                        borderRadius: '8px',
+                                        background: amount > 0 ? 'var(--accent-color)' : 'var(--muted-color)',
+                                        border: 'none',
+                                        color: amount > 0 ? 'white' : 'var(--text-primary)',
+                                        fontWeight: 800,
+                                        fontSize: '0.7rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {amount > 0 ? '+' : ''}{amount}kg
+                                </button>
+                            ))}
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8 }}>
