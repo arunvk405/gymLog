@@ -1,5 +1,8 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { DEFAULT_TEMPLATE } from '../data/program';
+import { toast } from 'react-hot-toast';
 
 const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
     const [search, setSearch] = useState('');

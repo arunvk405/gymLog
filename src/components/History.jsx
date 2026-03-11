@@ -25,9 +25,10 @@ const History = ({ history, onUpdate }) => {
     };
 
     const startEdit = (session) => {
-        setEditingId(session.id);
+        const sessionId = session.id || session.date;
+        setEditingId(sessionId);
         setEditData(JSON.parse(JSON.stringify(session))); // deep clone
-        setExpanded(prev => ({ ...prev, [session.id]: true }));
+        setExpanded(prev => ({ ...prev, [sessionId]: true }));
     };
 
     const cancelEdit = () => {
@@ -36,17 +37,21 @@ const History = ({ history, onUpdate }) => {
     };
 
     const updateEditSet = (exIdx, setIdx, field, value) => {
+        if (!editData) return;
         const updated = { ...editData };
-        updated.exercises[exIdx].sets[setIdx][field] = value;
-        setEditData(updated);
+        if (updated.exercises[exIdx] && updated.exercises[exIdx].sets[setIdx]) {
+            updated.exercises[exIdx].sets[setIdx][field] = value;
+            setEditData(updated);
+        }
     };
 
     const saveEdit = async () => {
-        if (!editData?.id || saving) return;
+        if (!editData || saving) return;
         setSaving(true);
         try {
             const sessionDate = new Date(editData.date);
-            await updateWorkout(editData.id, {
+            const updateId = editData.id || editData.date;
+            await updateWorkout(updateId, {
                 exercises: editData.exercises,
                 date: editData.date,
                 timestamp: sessionDate.getTime(),
@@ -57,6 +62,7 @@ const History = ({ history, onUpdate }) => {
             setEditData(null);
             toast.success("Workout updated!");
         } catch (err) {
+            console.error("Edit save error:", err);
             toast.error("Failed to save changes");
         } finally {
             setSaving(false);
@@ -141,20 +147,21 @@ const History = ({ history, onUpdate }) => {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {filteredHistory.map(session => {
-                    const isEditing = editingId === session.id;
-                    const data = isEditing ? editData : session;
+                    const sessionId = session.id || session.date;
+                    const isEditing = editingId === sessionId;
+                    const data = isEditing ? (editData || session) : session;
 
                     return (
-                        <div key={session.id || session.date} className="panel" style={{
+                        <div key={sessionId} className="panel" style={{
                             margin: 0, padding: '1rem',
                             border: isEditing ? '2px solid var(--accent-color)' : '1px solid var(--border-color)'
                         }}>
                             <div
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: isEditing ? 'flex-start' : 'center', flexWrap: isEditing ? 'wrap' : 'nowrap', gap: isEditing ? '0.75rem' : '0', cursor: 'pointer' }}
-                                onClick={() => !isEditing && toggleExpand(session.id || session.date)}
+                                onClick={() => !isEditing && toggleExpand(sessionId)}
                             >
                                 <div>
-                                    {isEditing ? (
+                                    {isEditing && editData ? (
                                         <div
                                             style={{
                                                 position: 'relative',
@@ -167,12 +174,12 @@ const History = ({ history, onUpdate }) => {
                                         >
                                             <Calendar size={13} color="var(--accent-color)" />
                                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-color)' }}>
-                                                {format(new Date(editData.date ? editData.date : session.date), 'EEE, MMM dd')}
+                                                {format(new Date(editData.date || session.date), 'EEE, MMM dd')}
                                             </span>
                                             <ChevronDown size={10} color="var(--accent-color)" opacity={0.6} />
                                             <input
                                                 type="date"
-                                                value={editData.date ? editData.date.split('T')[0] : ''}
+                                                value={editData.date && typeof editData.date === 'string' ? editData.date.split('T')[0] : (typeof editData.date === 'number' ? new Date(editData.date).toISOString().split('T')[0] : '')}
                                                 max={new Date().toISOString().split('T')[0]}
                                                 onChange={(e) => {
                                                     if (!e.target.value) return;

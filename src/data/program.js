@@ -6,7 +6,7 @@ export const DEFAULT_PROGRAM = [
       { id: "bench_press", name: "Barbell Bench Press", sets: 4, reps: 6, startWeight: 60, type: "compound", muscleGroup: "Chest", progression: 2.5 },
       { id: "incline_db_press", name: "Incline Dumbbell Press", sets: 3, reps: 8, startWeight: 20, type: "accessory", muscleGroup: "Chest", progression: 2 },
       { id: "chest_fly", name: "Chest Fly (Machine/Cable)", sets: 3, reps: 12, startWeight: 15, type: "accessory", muscleGroup: "Chest", progression: 2.5 },
-      { id: "dips_push_ups", name: "Dips or Push-Ups", sets: 3, reps: 0, startWeight: 0, type: "accessory", muscleGroup: "Chest", progression: 0 },
+      { id: "decline_barbell_press", name: "Decline Barbell Press", sets: 3, reps: 8, startWeight: 30, type: "accessory", muscleGroup: "Chest", progression: 2.5 },
       { id: "tricep_pushdown", name: "Triceps Pushdown", sets: 3, reps: 10, startWeight: 25, type: "accessory", muscleGroup: "Triceps", progression: 2.5 },
       { id: "overhead_tricep_ext", name: "Overhead Dumbbell Triceps Extension", sets: 3, reps: 12, startWeight: 12, type: "accessory", muscleGroup: "Triceps", progression: 2.5 }
     ]
