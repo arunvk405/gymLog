@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { format, isToday, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { toast } from 'react-hot-toast';
-import { getWorkouts, deleteWorkout, updateWorkout } from '../db/firebase';
+import { fetchHistory as getWorkouts, deleteWorkout, updateWorkout } from '../utils/storage';
 import CustomDatePicker from './CustomDatePicker';
 
 const getWorkoutIcon = (name = "") => {

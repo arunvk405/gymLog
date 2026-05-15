@@ -34,6 +34,14 @@ export const updateWorkout = async (workoutId, data) => {
         console.error("Update workout error:", e);
         throw e;
     }
+};export const deleteWorkout = async (workoutId) => {
+    if (!workoutId) throw new Error("No workout ID");
+    try {
+        await deleteDoc(doc(db, 'workouts', workoutId));
+    } catch (e) {
+        console.error("Delete workout error:", e);
+        throw e;
+    }
 };
 
 export const fetchHistory = async (uid) => {
