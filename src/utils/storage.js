@@ -252,7 +252,11 @@ export const fetchExercises = async () => {
             return exerciseCache;
         }
     } catch (e) {
-        console.error("Fetch exercises error:", e);
+        if (e.code === 'permission-denied') {
+            console.warn("Firestore permissions denied for 'exercises'. Falling back to local database.");
+        } else {
+            console.error("Fetch exercises error:", e);
+        }
     }
     return null; // null means "not seeded yet"
 };

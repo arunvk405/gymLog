@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TARGETS } from '../data/program';
 import { calculate1RM, getStrengthLevel } from '../utils/analytics';
-import { Dumbbell, Plus, ChevronDown, Trash2, Pencil } from 'lucide-react';
+import { Dumbbell, Plus, ChevronDown, Trash2, Pencil, Flame, Trophy, Zap, TrendingUp, Quote, Activity } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { MOTIVATIONAL_QUOTES } from '../data/motivation';
 
 const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates, onSelectTemplate, onCreateTemplate, onEditTemplate, onDeleteTemplate }) => {
+    const [quote, setQuote] = useState('');
+
+    useEffect(() => {
+        const randomQuote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+        setQuote(randomQuote);
+    }, []);
+
     if (!profile) return <div className="fade-in">Loading profile...</div>;
 
     const getLatest1RM = (exerciseId) => {
@@ -34,34 +42,55 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
 
     return (
         <div className="fade-in">
-            <h1 style={{ fontSize: '2rem', marginBottom: '2rem' }}>BulkBro</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h1 style={{ fontSize: '2.2rem', margin: 0 }} className="text-gradient">BulkBro</h1>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="glass-panel" style={{ padding: '8px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Flame size={16} color="var(--error-color)" className="icon-pulse" />
+                        <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{history.length} SESSIONS</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* MOTIVATION CARD */}
+            <div className="motivation-card fade-in">
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem', opacity: 0.9 }}>
+                        <Quote size={14} fill="white" />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>Daily Fuel</span>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, lineHeight: 1.3 }}>"{quote}"</div>
+                </div>
+            </div>
 
             <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
-                {big3.map(ex => {
+                {big3.map((ex, idx) => {
                     const current1RM = getLatest1RM(ex.id);
                     const target = TARGETS[ex.id]?.target || 0;
                     const progress = Math.min(100, Math.round((current1RM / target) * 100)) || 0;
                     const level = getStrengthLevel(ex.id, profile.bodyweight, current1RM);
 
+                    const Icon = idx === 0 ? Trophy : (idx === 1 ? Zap : TrendingUp);
+
                     return (
-                        <div key={ex.id} className="panel" style={{ marginBottom: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{ex.name} 1RM</div>
-                                {current1RM > 0 && (
-                                    <div style={{ background: 'var(--muted-color)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', color: 'var(--accent-color)', fontWeight: 800, border: '1px solid var(--border-color)' }}>
-                                        {level}
-                                    </div>
-                                )}
+                        <div key={ex.id} className="panel" style={{ marginBottom: 0, position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>{ex.name}</div>
+                                <Icon size={16} color="var(--accent-color)" className="icon-bounce" />
                             </div>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{current1RM} <small style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>kg</small></div>
-                            <div style={{ marginTop: '1rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.3rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Target: {target}kg</span>
+                            <div style={{ fontSize: '1.8rem', fontWeight: 900, position: 'relative', zIndex: 1 }}>
+                                {current1RM} <small style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>KG</small>
+                            </div>
+                            
+                            <div style={{ marginTop: '1rem', position: 'relative', zIndex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: '0.4rem', fontWeight: 700 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>LVL: <span style={{ color: 'var(--accent-color)' }}>{level}</span></span>
                                     <span>{progress}%</span>
                                 </div>
-                                <div style={{ width: '100%', height: '6px', background: 'var(--border-color)', borderRadius: '3px' }}>
-                                    <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent-color)', borderRadius: '3px', transition: 'width 1s ease-out' }}></div>
+                                <div style={{ width: '100%', height: '6px', background: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                                    <div className="progress-bar-fill" style={{ width: '100%', transform: `scaleX(${progress / 100})`, height: '100%', borderRadius: '3px' }}></div>
                                 </div>
+
                             </div>
                         </div>
                     );
@@ -191,31 +220,32 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                 {programDays.map((day, idx) => (
                     <div
                         key={day.day || idx}
-                        className="secondary"
+                        className="panel"
                         style={{
-                            textAlign: 'left', padding: '0.8rem 1.2rem', display: 'flex',
-                            justifyContent: 'space-between', alignItems: 'center', borderRadius: '14px',
-                            border: '1px solid transparent', cursor: 'pointer', transition: 'all 0.2s',
-                            boxShadow: 'var(--shadow-sm)'
+                            textAlign: 'left', padding: '1rem', display: 'flex',
+                            justifyContent: 'space-between', alignItems: 'center', borderRadius: '20px',
+                            cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            border: '1px solid var(--border-color)',
+                            marginBottom: 0
                         }}
                         onClick={() => onStartWorkout(idx)}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                            <div style={{
-                                width: '32px', height: '32px', borderRadius: '10px', background: 'var(--accent-color)',
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                            <div className="glass-panel" style={{
+                                width: '48px', height: '48px', borderRadius: '14px',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.75rem', fontWeight: 900, color: 'white', flexShrink: 0
+                                background: 'rgba(56, 189, 248, 0.1)', flexShrink: 0
                             }}>
-                                {day.day || idx + 1}
+                                <Dumbbell size={20} color="var(--accent-color)" className="icon-pulse" />
                             </div>
                             <div>
-                                <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{day.name}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    {day.exercises.length} exercise{day.exercises.length !== 1 ? 's' : ''}
+                                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', textTransform: 'uppercase' }}>{day.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Activity size={12} /> {day.exercises.length} Exercises
                                 </div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -230,8 +260,8 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                                 }}
                                 style={{
                                     background: 'var(--panel-color)', border: '1px solid var(--border-color)',
-                                    cursor: 'pointer', padding: '8px', color: 'var(--text-secondary)',
-                                    borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    cursor: 'pointer', padding: '10px', color: 'var(--text-secondary)',
+                                    borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center'
                                 }}
                             >
                                 <Pencil size={18} />
@@ -242,17 +272,20 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                                     onStartWorkout(idx);
                                 }}
                                 style={{
-                                    background: 'var(--accent-color)', border: 'none',
-                                    cursor: 'pointer', padding: '8px', color: 'white',
-                                    borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    background: 'var(--accent-gradient)', border: 'none',
+                                    cursor: 'pointer', padding: '10px 16px', color: 'white',
+                                    borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px',
+                                    fontSize: '0.8rem', fontWeight: 800, boxShadow: '0 4px 12px rgba(56, 189, 248, 0.3)'
                                 }}
                             >
-                                <Dumbbell size={18} />
+                                GO <Zap size={14} fill="white" />
                             </button>
                         </div>
+
                     </div>
                 ))}
             </div>
+
         </div>
     );
 };

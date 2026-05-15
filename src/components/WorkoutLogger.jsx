@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { format, isToday } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search } from 'lucide-react';
+import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote } from 'lucide-react';
+import { MOTIVATIONAL_QUOTES } from '../data/motivation';
+import CustomDatePicker from './CustomDatePicker';
 import { db } from '../firebase';
-import { collection, getDocs, doc, setDoc } from 'firebase/firestore'; // Corrected storage to firestore
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
 // Web Audio API — uses 'ambient' audio session so it never interrupts background music.
 // HTMLMediaElement (new Audio) triggers system 'playback' which ducks/pauses other audio.
@@ -49,10 +51,22 @@ const initAudio = () => {
     }
 };
 
+const getWorkoutIcon = (name = "") => {
+    const n = name.toLowerCase();
+    if (n.includes('chest') || n.includes('bench')) return <Target className="icon-bounce" color="var(--accent-color)" size={24} />;
+    if (n.includes('back') || n.includes('row')) return <Activity className="icon-bounce" color="var(--accent-color)" size={24} />;
+    if (n.includes('leg') || n.includes('squat')) return <Zap className="icon-bounce" color="var(--accent-color)" size={24} />;
+    if (n.includes('arm') || n.includes('bicep') || n.includes('tricep')) return <BicepsFlexed className="icon-bounce" color="var(--accent-color)" size={24} />;
+    if (n.includes('shoulder')) return <Shield className="icon-bounce" color="var(--accent-color)" size={24} />;
+    return <Sword className="icon-bounce" color="var(--accent-color)" size={24} />;
+};
+
 const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerciseDb, workoutStartTime = null, onMinimize }) => {
+    const [quote] = useState(() => MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
     const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
     const [workoutDate, setWorkoutDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     // Timer state
     const [timeLeft, setTimeLeft] = useState(0);
@@ -325,52 +339,76 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                     borderBottom: '1px solid var(--border-color)',
                     gap: '0.8rem'
                 }}>
-                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <button className="secondary" style={{ padding: '0.5rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700 }} onClick={() => {
-                            const hasCompletedSets = workout.exercises.some(ex => ex.sets.some(s => s.completed));
-                            if (hasCompletedSets) {
-                                if (window.confirm("You have completed sets. Are you sure you want to cancel this workout? Progress won't be saved.")) {
-                                    onCancel();
-                                }
-                            } else {
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto', marginBottom: '1rem' }}>
+                    <button className="secondary dp-btn" onClick={() => {
+                        const hasCompletedSets = workout.exercises.some(ex => ex.sets.some(s => s.completed));
+                        if (hasCompletedSets) {
+                            if (window.confirm("You have completed sets. Are you sure you want to cancel this workout? Progress won't be saved.")) {
                                 onCancel();
                             }
-                        }}>
-                            <ArrowLeft size={18} />
-                        </button>
-                        <div style={{ textAlign: 'center' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, lineHeight: 1.2 }}>{workout.name}</h2>
-                            <div style={{ fontSize: '0.9rem', color: 'var(--accent-color)', fontWeight: 800 }}>
-                                {formatTime(elapsedTime)}
-                            </div>
+                        } else {
+                            onCancel();
+                        }
+                    }} style={{
+                        padding: '0.6rem 0.8rem', borderRadius: '12px', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', background: 'var(--panel-color)',
+                        border: '1px solid var(--border-color)'
+                    }}>
+                        <ArrowLeft size={20} />
+                    </button>
+                    
+                    <div style={{ textAlign: 'center' }}>
+                        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-primary)' }}>{workout.name}</h2>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 800, marginTop: '2px' }}>
+                            {formatTime(elapsedTime)}
                         </div>
-                        <button className="secondary" style={{ padding: '0.5rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 700 }} onClick={onMinimize}>
-                            <ChevronDownSquare size={18} /> Min
-                        </button>
                     </div>
 
-                    <div
-                        style={{
-                            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
-                            cursor: 'pointer', background: 'var(--muted-color)',
-                            padding: '8px 24px', borderRadius: '12px', position: 'relative',
-                            border: '1px solid var(--border-color)', overflow: 'hidden',
-                            width: '200px'
-                        }}
-                    >
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            {isToday(new Date(workoutDate + 'T12:00:00')) ? 'Today' : format(new Date(workoutDate + 'T12:00:00'), 'MMM dd, yyyy')}
-                        </span>
-                        <Calendar size={12} color="var(--text-primary)" style={{ marginLeft: '4px' }} />
-                        <input
-                            type="date"
-                            value={workoutDate}
-                            max={new Date().toISOString().split('T')[0]}
-                            onChange={(e) => {
-                                if (e.target.value) setWorkoutDate(e.target.value);
+                    <button className="secondary dp-btn" style={{ 
+                        padding: '0.6rem 1rem', borderRadius: '12px', display: 'flex', 
+                        alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800,
+                        background: 'var(--panel-color)', border: '1px solid var(--border-color)',
+                        textTransform: 'uppercase'
+                    }} onClick={onMinimize}>
+                        <ChevronDownSquare size={16} /> HIDE
+                    </button>
+                </div>
+
+                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                        <button
+                            className="dp-btn"
+                            onClick={() => setShowDatePicker(true)}
+                            style={{
+                                gap: '10px',
+                                padding: '10px 18px', borderRadius: '16px',
+                                background: 'var(--muted-color)', border: '1px solid var(--border-color)',
                             }}
-                            className="date-picker-input"
-                        />
+                        >
+                            <Calendar size={16} color="var(--accent-color)" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {isToday(new Date(workoutDate + 'T12:00:00')) ? 'Today' : format(new Date(workoutDate + 'T12:00:00'), 'dd MMM yyyy')}
+                            </span>
+                            <ChevronDown size={14} color="var(--text-secondary)" />
+                        </button>
+
+                        {showDatePicker && (
+                            <CustomDatePicker
+                                value={workoutDate}
+                                maxDate={new Date().toISOString().split('T')[0]}
+                                onChange={(val) => setWorkoutDate(val)}
+                                onClose={() => setShowDatePicker(false)}
+                                align="center"
+                            />
+                        )}
+                    </div>
+
+                </div>
+
+                {/* MOTIVATION MINI-BAR */}
+                <div style={{ padding: '0 1rem', marginBottom: '1rem' }}>
+                    <div className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Quote size={14} color="var(--accent-color)" opacity={0.6} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, fontStyle: 'italic', color: 'var(--text-secondary)' }}>{quote}</span>
                     </div>
                 </div>
 
@@ -434,7 +472,10 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                         <div {...provided.dragHandleProps} style={{ cursor: 'grab', color: 'var(--text-secondary)', padding: '4px' }}>
                                                             <GripVertical size={20} />
                                                         </div>
-                                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-color)', fontWeight: 800 }}>{ex.name}</h3>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            {getWorkoutIcon(ex.name)}
+                                                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-color)', fontWeight: 900, textTransform: 'uppercase' }}>{ex.name}</h3>
+                                                        </div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
                                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>{ex.sets.filter(s => s.completed).length} / {ex.sets.length} DONE</div>
@@ -612,10 +653,14 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                                         <div style={{
                                                                             height: '100%',
                                                                             background: 'var(--accent-color)',
-                                                                            width: `${(timeLeft / totalRestTime) * 100}%`,
-                                                                            transition: 'width 0.25s linear'
+                                                                            width: '100%',
+                                                                            transform: `scaleX(${timeLeft / totalRestTime})`,
+                                                                            transformOrigin: 'left',
+                                                                            transition: 'transform 0.25s linear',
+                                                                            willChange: 'transform'
                                                                         }} />
                                                                     </div>
+
                                                                 </div>
                                                             )}
                                                         </React.Fragment>

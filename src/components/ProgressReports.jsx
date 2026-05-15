@@ -215,7 +215,23 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
     try {
         return (
             <div className="fade-in" style={{ color: 'var(--text-primary)' }}>
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Training Insights</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.8rem', margin: 0 }} className="text-gradient">Training Insights</h2>
+                    <div className="glass-panel" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent-color)', textTransform: 'uppercase' }}>
+                        Elite Protocol
+                    </div>
+                </div>
+
+                {/* MOTIVATION BANNER */}
+                <div className="panel" style={{ background: 'var(--accent-gradient)', border: 'none', marginBottom: '1.5rem', color: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <TrendingUp size={24} />
+                        <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>MINDSET OVER MATTER</div>
+                            <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Your metrics are a reflection of your discipline. Keep pushing.</div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* ANABOLIC STATUS GUIDE */}
                 <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
