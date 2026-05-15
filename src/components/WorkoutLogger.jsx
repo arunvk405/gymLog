@@ -331,15 +331,14 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
     return (
         <>
             <div className="fade-in" style={{ paddingBottom: '8rem' }}>
-                <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    padding: '1rem', marginBottom: '1.5rem',
-                    position: 'sticky', top: 0, zIndex: 50,
-                    background: 'var(--bg-color)',
-                    borderBottom: '1px solid var(--border-color)',
-                    gap: '0.8rem'
-                }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto', marginBottom: '1rem' }}>
+            {/* STICKY HEADER */}
+            <div style={{
+                position: 'sticky', top: 0, zIndex: 50,
+                background: 'var(--bg-color)', padding: '0.75rem 1rem',
+                borderBottom: '1px solid var(--border-color)',
+                backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto', marginBottom: '0.75rem' }}>
                     <button className="secondary dp-btn" onClick={() => {
                         const hasCompletedSets = workout.exercises.some(ex => ex.sets.some(s => s.completed));
                         if (hasCompletedSets) {
@@ -350,27 +349,27 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                             onCancel();
                         }
                     }} style={{
-                        padding: '0.6rem 0.8rem', borderRadius: '12px', display: 'flex',
+                        padding: '0.5rem 0.6rem', borderRadius: '12px', display: 'flex',
                         alignItems: 'center', justifyContent: 'center', background: 'var(--panel-color)',
                         border: '1px solid var(--border-color)'
                     }}>
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={18} />
                     </button>
                     
-                    <div style={{ textAlign: 'center' }}>
-                        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-primary)' }}>{workout.name}</h2>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 800, marginTop: '2px' }}>
+                    <div style={{ textAlign: 'center', flex: 1, padding: '0 8px' }}>
+                        <h2 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workout.name}</h2>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 800, marginTop: '1px' }}>
                             {formatTime(elapsedTime)}
                         </div>
                     </div>
 
                     <button className="secondary dp-btn" style={{ 
-                        padding: '0.6rem 1rem', borderRadius: '12px', display: 'flex', 
-                        alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800,
+                        padding: '0.5rem 0.75rem', borderRadius: '12px', display: 'flex', 
+                        alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800,
                         background: 'var(--panel-color)', border: '1px solid var(--border-color)',
-                        textTransform: 'uppercase'
+                        textTransform: 'uppercase', letterSpacing: '0.5px'
                     }} onClick={onMinimize}>
-                        <ChevronDownSquare size={16} /> HIDE
+                        <ChevronDownSquare size={14} /> HIDE
                     </button>
                 </div>
 

@@ -261,30 +261,32 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
             {/* STICKY HEADER */}
             <div style={{
                 position: 'sticky', top: 0, zIndex: 50,
-                background: 'var(--bg-color)', padding: '1rem',
+                background: 'var(--bg-color)', padding: '0.75rem 1rem',
                 borderBottom: '1px solid var(--border-color)',
                 backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto' }}>
-                    <button className="secondary" onClick={onCancel} style={{
-                        padding: '0.6rem 1rem', borderRadius: '14px', display: 'flex',
-                        alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 700,
-                        border: '1px solid var(--border-color)', background: 'var(--panel-color)'
+                    <button className="secondary dp-btn" onClick={onCancel} style={{
+                        padding: '0.5rem 0.75rem', borderRadius: '12px', display: 'flex',
+                        alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800,
+                        border: '1px solid var(--border-color)', background: 'var(--panel-color)',
+                        textTransform: 'uppercase', letterSpacing: '0.5px'
                     }}>
-                        <ArrowLeft size={18} /> BACK
+                        <ArrowLeft size={16} /> BACK
                     </button>
                     
-                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }} className="text-gradient">
+                    <h2 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center', flex: 1, padding: '0 8px' }} className="text-gradient">
                         {isEditing ? 'Edit Template' : 'Create Template'}
                     </h2>
 
-                    <button onClick={handleSave} style={{
-                        padding: '0.6rem 1.25rem', borderRadius: '14px', display: 'flex',
-                        alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 800,
+                    <button className="dp-btn" onClick={handleSave} style={{
+                        padding: '0.5rem 1rem', borderRadius: '12px', display: 'flex',
+                        alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800,
                         background: 'var(--text-primary)', color: 'var(--bg-color)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        textTransform: 'uppercase', letterSpacing: '0.5px'
                     }}>
-                        <Save size={18} /> SAVE
+                        <Save size={16} /> SAVE
                     </button>
                 </div>
             </div>
