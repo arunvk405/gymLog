@@ -288,6 +288,63 @@ const History = ({ history, onUpdate }) => {
                                                     >
                                                         <Pencil size={15} />
                                                     </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toast((t) => (
+                                                                <div style={{ padding: '4px' }}>
+                                                                    <div style={{ marginBottom: '12px', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                                        Delete this workout session?
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                toast.dismiss(t.id);
+                                                                                try {
+                                                                                    await deleteWorkout(sessionId);
+                                                                                    toast.success("Workout deleted!");
+                                                                                    if (onUpdate) onUpdate();
+                                                                                } catch (err) {
+                                                                                    console.error("Delete error:", err);
+                                                                                    toast.error("Failed to delete workout");
+                                                                                }
+                                                                            }}
+                                                                            style={{
+                                                                                background: 'var(--error-color)',
+                                                                                color: 'white',
+                                                                                border: 'none',
+                                                                                padding: '6px 14px',
+                                                                                borderRadius: '8px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: 800,
+                                                                                cursor: 'pointer'
+                                                                            }}
+                                                                        >
+                                                                            Yes, Delete
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => toast.dismiss(t.id)}
+                                                                            style={{
+                                                                                background: 'var(--panel-color)',
+                                                                                color: 'var(--text-secondary)',
+                                                                                border: '1px solid var(--border-color)',
+                                                                                padding: '6px 14px',
+                                                                                borderRadius: '8px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: 800,
+                                                                                cursor: 'pointer'
+                                                                            }}
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ), { duration: 5000, position: 'top-center' });
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--error-color)' }}
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
                                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                                         {session.exercises.length} Ex
                                                     </span>
