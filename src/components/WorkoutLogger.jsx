@@ -11,16 +11,42 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
 // Web Audio API — uses 'ambient' audio session so it never interrupts background music.
-// HTMLMediaElement (new Audio) triggers system 'playback' which ducks/pauses other audio.
 let audioCtx = null;
 let beepBuffer = null;
 
-// Lazily create the AudioContext on first user gesture (required by browsers)
+// Lazily create the AudioContext
 const getAudioCtx = () => {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Configure iOS audio session to mix with other audio if API is available
+        if (navigator.audioSession) {
+            try {
+                navigator.audioSession.type = 'ambient';
+            } catch (e) {
+                console.warn('Failed to set audio session type:', e);
+            }
+        }
     }
     return audioCtx;
+};
+
+// Robust decodeAudioData wrapper for cross-browser support (specifically Safari iOS)
+const decodeAudio = (ctx, arrayBuffer) => {
+    return new Promise((resolve, reject) => {
+        try {
+            const result = ctx.decodeAudioData(
+                arrayBuffer,
+                (decoded) => resolve(decoded),
+                (err) => reject(err)
+            );
+            if (result && typeof result.then === 'function') {
+                result.then(resolve).catch(reject);
+            }
+        } catch (e) {
+            reject(e);
+        }
+    });
 };
 
 // Pre-load the beep buffer so playback is instant
@@ -29,7 +55,7 @@ const loadBeepBuffer = async () => {
         const ctx = getAudioCtx();
         const response = await fetch('/beep.wav');
         const arrayBuffer = await response.arrayBuffer();
-        beepBuffer = await ctx.decodeAudioData(arrayBuffer);
+        beepBuffer = await decodeAudio(ctx, arrayBuffer);
     } catch (e) {
         console.error('Failed to load beep buffer:', e);
     }
@@ -43,6 +69,14 @@ const initAudio = () => {
         if (ctx.state === 'suspended') {
             ctx.resume();
         }
+
+        // Play a dummy silent sound to unlock the AudioContext immediately on iOS Safari
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+
         if (!beepBuffer) {
             loadBeepBuffer();
         }
@@ -145,6 +179,11 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         }, 1000);
         return () => clearInterval(int);
     }, [workoutStartTime]);
+
+    // Preload audio buffer on component mount
+    React.useEffect(() => {
+        loadBeepBuffer();
+    }, []);
 
     // Play Beep Sound via Web Audio API (does NOT interrupt background music)
     const playBeep = () => {
@@ -331,47 +370,47 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
     return (
         <>
             <div className="fade-in" style={{ paddingBottom: '8rem' }}>
-            {/* STICKY HEADER */}
-            <div style={{
-                position: 'sticky', top: 0, zIndex: 50,
-                background: 'var(--bg-color)', padding: '0.75rem 1rem',
-                borderBottom: '1px solid var(--border-color)',
-                backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto', marginBottom: '0.75rem' }}>
-                    <button className="secondary dp-btn" onClick={() => {
-                        const hasCompletedSets = workout.exercises.some(ex => ex.sets.some(s => s.completed));
-                        if (hasCompletedSets) {
-                            if (window.confirm("You have completed sets. Are you sure you want to cancel this workout? Progress won't be saved.")) {
+                {/* STICKY HEADER */}
+                <div style={{
+                    position: 'sticky', top: 0, zIndex: 50,
+                    background: 'var(--bg-color)', padding: '0.75rem 1rem',
+                    borderBottom: '1px solid var(--border-color)',
+                    backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto', marginBottom: '0.75rem' }}>
+                        <button className="secondary dp-btn" onClick={() => {
+                            const hasCompletedSets = workout.exercises.some(ex => ex.sets.some(s => s.completed));
+                            if (hasCompletedSets) {
+                                if (window.confirm("You have completed sets. Are you sure you want to cancel this workout? Progress won't be saved.")) {
+                                    onCancel();
+                                }
+                            } else {
                                 onCancel();
                             }
-                        } else {
-                            onCancel();
-                        }
-                    }} style={{
-                        padding: '0.5rem 0.6rem', borderRadius: '12px', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', background: 'var(--panel-color)',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <ArrowLeft size={18} />
-                    </button>
-                    
-                    <div style={{ textAlign: 'center', flex: 1, padding: '0 8px' }}>
-                        <h2 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workout.name}</h2>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 800, marginTop: '1px' }}>
-                            {formatTime(elapsedTime)}
-                        </div>
-                    </div>
+                        }} style={{
+                            padding: '0.5rem 0.6rem', borderRadius: '12px', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', background: 'var(--panel-color)',
+                            border: '1px solid var(--border-color)'
+                        }}>
+                            <ArrowLeft size={18} />
+                        </button>
 
-                    <button className="secondary dp-btn" style={{ 
-                        padding: '0.5rem 0.75rem', borderRadius: '12px', display: 'flex', 
-                        alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800,
-                        background: 'var(--panel-color)', border: '1px solid var(--border-color)',
-                        textTransform: 'uppercase', letterSpacing: '0.5px'
-                    }} onClick={onMinimize}>
-                        <ChevronDownSquare size={14} /> HIDE
-                    </button>
-                </div>
+                        <div style={{ textAlign: 'center', flex: 1, padding: '0 8px' }}>
+                            <h2 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workout.name}</h2>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 800, marginTop: '1px' }}>
+                                {formatTime(elapsedTime)}
+                            </div>
+                        </div>
+
+                        <button className="secondary dp-btn" style={{
+                            padding: '0.5rem 0.75rem', borderRadius: '12px', display: 'flex',
+                            alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800,
+                            background: 'var(--panel-color)', border: '1px solid var(--border-color)',
+                            textTransform: 'uppercase', letterSpacing: '0.5px'
+                        }} onClick={onMinimize}>
+                            <ChevronDownSquare size={14} /> HIDE
+                        </button>
+                    </div>
 
                     <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
                         <button
@@ -706,15 +745,18 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                             padding: '1.2rem',
                             fontSize: '1.1rem',
                             borderRadius: '20px',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                            boxShadow: '0 8px 32px rgba(37, 99, 235, 0.3)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '12px',
-                            background: 'var(--accent-secondary)',
+                            background: 'var(--accent-gradient)',
+                            color: 'white',
                             fontWeight: 800,
                             textTransform: 'uppercase',
-                            letterSpacing: '1px'
+                            letterSpacing: '1px',
+                            border: 'none',
+                            cursor: 'pointer'
                         }}
                         onClick={handleFinish}
                     >
