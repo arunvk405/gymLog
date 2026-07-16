@@ -8,6 +8,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 import { Bar, Line } from 'react-chartjs-2';
+import ExerciseAnalytics from './ExerciseAnalytics';
 
 // Defensive date formatter helper
 const safeFormat = (date, formatStr, fallback = 'N/A') => {
@@ -356,6 +357,15 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                             No weight logs found yet.
                         </div>
                     )}
+                </div>
+
+                {/* INDIVIDUAL EXERCISE PROGRESSION ANALYTICS */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                        <TrendingUp size={22} color="var(--accent-color)" />
+                        <h2 style={{ fontSize: '1.2rem', margin: 0, textTransform: 'uppercase', color: 'var(--text-primary)' }}>Exercise Progression</h2>
+                    </div>
+                    <ExerciseAnalytics history={history} theme={theme} />
                 </div>
 
                 {/* MUSCLE GROUP DISTRIBUTION */}

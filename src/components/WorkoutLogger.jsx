@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { format, isToday } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote } from 'lucide-react';
+import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote, Calculator } from 'lucide-react';
 import { MOTIVATIONAL_QUOTES } from '../data/motivation';
 import CustomDatePicker from './CustomDatePicker';
+import PlateCalculatorModal from './PlateCalculatorModal';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
@@ -101,6 +102,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
     const [isSaving, setIsSaving] = useState(false);
     const [workoutDate, setWorkoutDate] = useState(new Date().toISOString().split('T')[0]);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [activePlateCalc, setActivePlateCalc] = useState(null);
 
     // Timer state
     const [timeLeft, setTimeLeft] = useState(0);
@@ -273,6 +275,31 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         });
 
         setWorkout(newWorkout);
+    };
+
+    const generateWarmupSets = (exerciseIndex) => {
+        const newWorkout = { ...workout };
+        const exercise = newWorkout.exercises[exerciseIndex];
+        const workingWeight = parseFloat(exercise.sets[0]?.weight) || 20;
+
+        // Calculate weights rounded to nearest 2.5kg
+        const w1 = Math.round((workingWeight * 0.5) / 2.5) * 2.5;
+        const w2 = Math.round((workingWeight * 0.7) / 2.5) * 2.5;
+        const w3 = Math.round((workingWeight * 0.9) / 2.5) * 2.5;
+
+        const baseWeight1 = w1 > 20 ? w1 : 20;
+        const baseWeight2 = w2 > 20 ? w2 : 20;
+        const baseWeight3 = w3 > 20 ? w3 : 20;
+
+        const warmups = [
+            { id: Date.now() - 3, weight: baseWeight1, reps: 10, completed: false, isWarmup: true, prevWeight: baseWeight1 },
+            { id: Date.now() - 2, weight: baseWeight2, reps: 5, completed: false, isWarmup: true, prevWeight: baseWeight2 },
+            { id: Date.now() - 1, weight: baseWeight3, reps: 2, completed: false, isWarmup: true, prevWeight: baseWeight3 }
+        ];
+
+        exercise.sets = [...warmups, ...exercise.sets];
+        setWorkout(newWorkout);
+        toast.success("Warm-up sets generated!");
     };
 
     const deleteSet = (exerciseIndex, setIndex) => {
@@ -560,6 +587,27 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                             {amount > 0 ? '+' : ''}{amount}kg
                                                         </button>
                                                     ))}
+
+                                                    {!ex.sets.some(s => s.isWarmup) && (
+                                                        <button
+                                                            onClick={() => generateWarmupSets(exIdx)}
+                                                            style={{
+                                                                padding: '0.25rem 0.6rem',
+                                                                borderRadius: '8px',
+                                                                background: 'rgba(234, 179, 8, 0.1)',
+                                                                border: '1px solid #eab308',
+                                                                color: '#eab308',
+                                                                fontWeight: 800,
+                                                                fontSize: '0.7rem',
+                                                                cursor: 'pointer',
+                                                                boxShadow: 'none',
+                                                                textTransform: 'uppercase',
+                                                                marginLeft: 'auto'
+                                                            }}
+                                                        >
+                                                            + Warm-up Sets
+                                                        </button>
+                                                    )}
                                                 </div>
 
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8, paddingLeft: '32px' }}>
@@ -574,7 +622,9 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                     {ex.sets.map((set, setIdx) => (
                                                         <React.Fragment key={set.id}>
                                                             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.8rem', alignItems: 'center', marginBottom: '1.2rem' }}>
-                                                                <span style={{ color: 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>{setIdx + 1}</span>
+                                                                <span style={{ color: set.isWarmup ? '#eab308' : 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                                    {set.isWarmup ? `W` : setIdx + 1 - ex.sets.filter(s => s.isWarmup).length}
+                                                                </span>
 
                                                                 <div style={{ position: 'relative' }}>
                                                                     <input
@@ -595,6 +645,29 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                                     <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
                                                                         LAST: {set.prevWeight}kg
                                                                     </div>
+                                                                    <button
+                                                                        onClick={() => setActivePlateCalc({ exIdx, setIdx, weight: set.weight })}
+                                                                        style={{
+                                                                            position: 'absolute',
+                                                                            right: '6px',
+                                                                            bottom: '6px',
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            cursor: 'pointer',
+                                                                            padding: '2px',
+                                                                            color: 'var(--text-secondary)',
+                                                                            opacity: 0.5,
+                                                                            boxShadow: 'none',
+                                                                            width: '18px',
+                                                                            height: '18px',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center'
+                                                                        }}
+                                                                        title="Plate Calculator"
+                                                                    >
+                                                                        <Calculator size={12} />
+                                                                    </button>
                                                                 </div>
 
                                                                 <input
@@ -808,6 +881,16 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                     </div>
                 )
             }
+            {activePlateCalc && (
+                <PlateCalculatorModal
+                    initialWeight={activePlateCalc.weight}
+                    onSave={(newWeight) => {
+                        updateSet(activePlateCalc.exIdx, activePlateCalc.setIdx, 'weight', newWeight);
+                        setActivePlateCalc(null);
+                    }}
+                    onClose={() => setActivePlateCalc(null)}
+                />
+            )}
         </>
     );
 };
