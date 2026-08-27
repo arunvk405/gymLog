@@ -36,6 +36,27 @@
   --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.6);
 }
 
+/* Custom Accent Themes */
+[data-accent='crimson'] {
+  --accent-color: #ef4444 !important;
+  --accent-gradient: linear-gradient(135deg, #dc2626 0%, #f87171 100%) !important;
+}
+
+[data-accent='gold'] {
+  --accent-color: #f59e0b !important;
+  --accent-gradient: linear-gradient(135deg, #d97706 0%, #fbbf24 100%) !important;
+}
+
+[data-accent='emerald'] {
+  --accent-color: #10b981 !important;
+  --accent-gradient: linear-gradient(135deg, #059669 0%, #34d399 100%) !important;
+}
+
+[data-accent='cyber'] {
+  --accent-color: #38bdf8 !important;
+  --accent-gradient: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
+}
+
 /* Custom Date Picker Trigger Styling */
 .date-picker-container {
   display: flex;
@@ -109,17 +130,18 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 auto;
   width: 100%;
   padding: 1rem;
-  padding-bottom: 6rem;
+  padding-bottom: 6.5rem;
 }
 
+/* Mobile-Friendly Optimizations */
 @media (max-width: 600px) {
   .app-container {
-    padding: 0.75rem;
-    padding-bottom: 5.5rem;
+    padding: 0.65rem;
+    padding-bottom: 6rem;
   }
 
   h1 {
-    font-size: 1.3rem !important;
+    font-size: 1.25rem !important;
   }
 
   h2 {
@@ -127,8 +149,29 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .panel {
-    padding: 0.85rem !important;
+    padding: 1rem !important;
+    border-radius: 18px !important;
+    margin-bottom: 1rem !important;
   }
+
+  input, select, button {
+    font-size: 0.9rem !important;
+  }
+}
+
+/* Smooth Touch Scrollbar Hide & Momentum */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile Safe Area Bottom Navigation */
+.bottom-nav {
+  padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 h1,
@@ -184,13 +227,30 @@ button {
 }
 
 /* Reset for buttons inside date picker — prevents global padding from breaking layout */
-.dp-btn {
+.dp-btn, .icon-btn, button.icon-btn {
   all: unset;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  color: var(--text-primary);
+}
+
+button.icon-btn, .icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--muted-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+button.icon-btn:hover, .icon-btn:hover {
+  background: var(--panel-color);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 button:hover {

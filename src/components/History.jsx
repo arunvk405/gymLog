@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
     Calendar, Clock, ChevronDown, ChevronUp, Search, X, Save, Pencil, 
     Trash2, Download, FileText, TrendingUp, Target, Activity, Zap, 
-    BicepsFlexed, Shield, Sword, Quote
+    BicepsFlexed, Shield, Sword, Quote, Info
 } from 'lucide-react';
 import { format, isToday, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { fetchHistory as getWorkouts, deleteWorkout, updateWorkout } from '../utils/storage';
 import CustomDatePicker from './CustomDatePicker';
+import ExerciseDetailModal from './ExerciseDetailModal';
+import { normalizeExerciseMuscles } from '../data/muscles';
 
 const getWorkoutIcon = (name = "") => {
     const n = name.toLowerCase();
@@ -29,6 +31,7 @@ const History = ({ history, onUpdate }) => {
     const [editData, setEditData] = useState(null);
     const [saving, setSaving] = useState(false);
     const [showEditDatePicker, setShowEditDatePicker] = useState(false);
+    const [inspectingExercise, setInspectingExercise] = useState(null);
 
     const toggleExpand = (id) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -399,17 +402,43 @@ const History = ({ history, onUpdate }) => {
                                             </div>
                                         </div>
 
-                                        {data.exercises.map((ex, exIdx) => (
-                                            <div key={exIdx} style={{ marginBottom: '1.25rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        {getWorkoutIcon(ex.name)}
-                                                        <span style={{ fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.3px' }}>{ex.name}</span>
+                                        {data.exercises.map((ex, exIdx) => {
+                                            const norm = normalizeExerciseMuscles(ex);
+                                            return (
+                                                <div key={exIdx} style={{ marginBottom: '1.25rem' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                {getWorkoutIcon(ex.name)}
+                                                                <span style={{ fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.3px' }}>{ex.name}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setInspectingExercise(ex)}
+                                                                    style={{
+                                                                        background: 'var(--muted-color)', border: 'none', borderRadius: '50%',
+                                                                        width: '24px', height: '24px', display: 'flex', alignItems: 'center',
+                                                                        justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)'
+                                                                    }}
+                                                                    title="Inspect Target Muscle Anatomy"
+                                                                >
+                                                                    <Info size={13} />
+                                                                </button>
+                                                            </div>
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginLeft: '26px' }}>
+                                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                    Primary: {norm.primaryRegions.join(', ')}
+                                                                </span>
+                                                                {norm.secondaryRegions.length > 0 && (
+                                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                        Sec: {norm.secondaryRegions.join(', ')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="glass-panel" style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, opacity: 0.8 }}>
+                                                            VOLUME: <span style={{ color: 'var(--accent-color)' }}>{calculateVolume(ex.sets)}</span> KG
+                                                        </div>
                                                     </div>
-                                                    <div className="glass-panel" style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, opacity: 0.8 }}>
-                                                        VOLUME: <span style={{ color: 'var(--accent-color)' }}>{calculateVolume(ex.sets)}</span> KG
-                                                    </div>
-                                                </div>
 
                                                 {isEditing ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -473,13 +502,20 @@ const History = ({ history, onUpdate }) => {
                                                     </div>
                                                 )}
                                             </div>
-                                        ))}
+                                        );
+                                    })}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
                 </div>
+            )}
+            {inspectingExercise && (
+                <ExerciseDetailModal
+                    exercise={inspectingExercise}
+                    onClose={() => setInspectingExercise(null)}
+                />
             )}
         </div>
     );

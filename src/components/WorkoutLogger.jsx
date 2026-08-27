@@ -4,10 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { format, isToday } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote, Calculator } from 'lucide-react';
+import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote, Calculator, Info } from 'lucide-react';
 import { MOTIVATIONAL_QUOTES } from '../data/motivation';
 import CustomDatePicker from './CustomDatePicker';
 import PlateCalculatorModal from './PlateCalculatorModal';
+import ExerciseDetailModal from './ExerciseDetailModal';
+import CreateExerciseModal from './CreateExerciseModal';
+import AnatomyViewer from './AnatomyViewer';
+import { normalizeExerciseMuscles } from '../data/muscles';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
@@ -96,7 +100,7 @@ const getWorkoutIcon = (name = "") => {
     return <Sword className="icon-bounce" color="var(--accent-color)" size={24} />;
 };
 
-const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerciseDb, workoutStartTime = null, onMinimize }) => {
+const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerciseDb, workoutStartTime = null, onMinimize, onPRAchieved }) => {
     const [quote] = useState(() => MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
     const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
@@ -113,6 +117,9 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
 
     const [showExerciseModal, setShowExerciseModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [inspectingExercise, setInspectingExercise] = useState(null);
+    const [showAnatomyMap, setShowAnatomyMap] = useState({});
+    const [showCreateCustomModal, setShowCreateCustomModal] = useState(false);
 
     const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -254,6 +261,42 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
 
         if (set.completed) {
             startTimer(exerciseIndex, setIndex);
+
+            // Check if PR broken
+            const currentEx = newWorkout.exercises[exerciseIndex];
+            const weight = parseFloat(set.weight) || 0;
+            const reps = parseInt(set.reps) || 0;
+
+            if (weight > 0 && reps > 0 && onPRAchieved) {
+                const est1RM = weight * (1 + reps / 30);
+                let prevMaxWeight = 0;
+
+                if (Array.isArray(history)) {
+                    history.forEach(log => {
+                        if (log.exercises) {
+                            log.exercises.forEach(e => {
+                                if (e.name === currentEx.name && Array.isArray(e.sets)) {
+                                    e.sets.forEach(s => {
+                                        if (s.completed && parseFloat(s.weight) > prevMaxWeight) {
+                                            prevMaxWeight = parseFloat(s.weight);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+
+                if (weight > prevMaxWeight && prevMaxWeight > 0) {
+                    onPRAchieved({
+                        exerciseName: currentEx.name,
+                        weight,
+                        reps,
+                        estimated1RM: est1RM,
+                        prevMax: prevMaxWeight
+                    });
+                }
+            }
         } else if (timerEndTime && timerLocation.exIdx === exerciseIndex && timerLocation.setIdx === setIndex) {
             setTimerEndTime(null);
         }
@@ -533,13 +576,70 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                 }}
                                             >
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div {...provided.dragHandleProps} style={{ cursor: 'grab', color: 'var(--text-secondary)', padding: '4px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                        <div {...provided.dragHandleProps} style={{ cursor: 'grab', color: 'var(--text-secondary)', padding: '4px', marginTop: '2px' }}>
                                                             <GripVertical size={20} />
                                                         </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                            {getWorkoutIcon(ex.name)}
-                                                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-color)', fontWeight: 900, textTransform: 'uppercase' }}>{ex.name}</h3>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                {getWorkoutIcon(ex.name)}
+                                                                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-color)', fontWeight: 900, textTransform: 'uppercase' }}>{ex.name}</h3>
+                                                                <button
+                                                                    type="button"
+                                                                    className="icon-btn"
+                                                                    onClick={() => setInspectingExercise(ex)}
+                                                                    style={{ width: '26px', height: '26px' }}
+                                                                    title="Inspect Target Muscle Anatomy"
+                                                                >
+                                                                    <Info size={14} />
+                                                                </button>
+                                                            </div>
+                                                            {(() => {
+                                                                const norm = normalizeExerciseMuscles(ex);
+                                                                const isOpen = showAnatomyMap[exIdx];
+
+                                                                return (
+                                                                    <div>
+                                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                                                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                                Primary: {norm.primaryRegions.join(', ')}
+                                                                            </span>
+                                                                            {norm.secondaryRegions.length > 0 && (
+                                                                                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                                    Sec: {norm.secondaryRegions.join(', ')}
+                                                                                </span>
+                                                                            )}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setShowAnatomyMap(prev => ({ ...prev, [exIdx]: !prev[exIdx] }))}
+                                                                                style={{
+                                                                                    fontSize: '0.65rem', fontWeight: 800,
+                                                                                    color: isOpen ? 'white' : 'var(--accent-color)',
+                                                                                    background: isOpen ? 'var(--accent-color)' : 'rgba(56, 189, 248, 0.12)',
+                                                                                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                                                                                    padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
+                                                                                    display: 'flex', alignItems: 'center', gap: '4px'
+                                                                                }}
+                                                                            >
+                                                                                📷 Muscle Anatomy Image
+                                                                            </button>
+                                                                        </div>
+                                                                        {isOpen && (
+                                                                            <div style={{
+                                                                                marginTop: '0.6rem', padding: '0.5rem', background: 'var(--bg-color)',
+                                                                                border: '1px solid var(--border-color)', borderRadius: '14px'
+                                                                            }}>
+                                                                                <AnatomyViewer
+                                                                                    primaryRegions={norm.primaryRegions}
+                                                                                    secondaryRegions={norm.secondaryRegions}
+                                                                                    primaryGroup={norm.primaryGroup}
+                                                                                    height={160}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                     <div style={{ textAlign: 'right' }}>
@@ -567,14 +667,14 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                 </div>
 
                                                 {/* Quick-bump row for entire exercise */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem', flexWrap: 'wrap', paddingLeft: '32px' }}>
-                                                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7 }}>Bump All Sets:</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.7 }}>Bump All:</span>
                                                     {[-2.5, 2.5, 3, 5, 10].map(amount => (
                                                         <button
                                                             key={amount}
                                                             onClick={() => bumpAllWeights(exIdx, amount)}
                                                             style={{
-                                                                padding: '0.25rem 0.6rem',
+                                                                padding: '0.25rem 0.5rem',
                                                                 borderRadius: '8px',
                                                                 background: amount > 0 ? 'var(--accent-color)' : 'var(--muted-color)',
                                                                 border: 'none',
@@ -592,7 +692,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                         <button
                                                             onClick={() => generateWarmupSets(exIdx)}
                                                             style={{
-                                                                padding: '0.25rem 0.6rem',
+                                                                padding: '0.25rem 0.5rem',
                                                                 borderRadius: '8px',
                                                                 background: 'rgba(234, 179, 8, 0.1)',
                                                                 border: '1px solid #eab308',
@@ -605,12 +705,12 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                                 marginLeft: 'auto'
                                                             }}
                                                         >
-                                                            + Warm-up Sets
+                                                            + Warm-up
                                                         </button>
                                                     )}
                                                 </div>
 
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8, paddingLeft: '32px' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', marginBottom: '0.6rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>
                                                     <span>Set</span>
                                                     <span style={{ textAlign: 'center' }}>KG</span>
                                                     <span style={{ textAlign: 'center' }}>Reps</span>
@@ -618,10 +718,10 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                     <span></span>
                                                 </div>
 
-                                                <div style={{ paddingLeft: '32px' }}>
+                                                <div>
                                                     {ex.sets.map((set, setIdx) => (
                                                         <React.Fragment key={set.id}>
-                                                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(30px, 0.4fr) 2fr 2fr 0.6fr 0.4fr', gap: '0.8rem', alignItems: 'center', marginBottom: '1.2rem' }}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', alignItems: 'center', marginBottom: '1.2rem' }}>
                                                                 <span style={{ color: set.isWarmup ? '#eab308' : 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>
                                                                     {set.isWarmup ? `W` : setIdx + 1 - ex.sets.filter(s => s.isWarmup).length}
                                                                 </span>
@@ -845,7 +945,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
                         background: 'var(--bg-color)', zIndex: 3000, display: 'flex', flexDirection: 'column'
                     }}>
-                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                             <button onClick={() => setShowExerciseModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)' }}>
                                 <X size={24} />
                             </button>
@@ -857,26 +957,55 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                 autoFocus
                                 style={{ flex: 1, padding: '0.8rem', borderRadius: '12px', background: 'var(--panel-color)' }}
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowCreateCustomModal(true)}
+                                style={{
+                                    padding: '8px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
+                                    background: 'var(--accent-color)', color: 'white', border: 'none',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                                }}
+                            >
+                                <Plus size={14} /> Custom
+                            </button>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                            {(exerciseDb || []).filter(ex => ex.name.toLowerCase().includes(searchQuery.toLowerCase())).map(ex => (
-                                <div
-                                    key={ex.id}
-                                    onClick={() => handleAddExercise(ex)}
-                                    style={{
-                                        padding: '1rem', background: 'var(--panel-color)',
-                                        border: '1px solid var(--border-color)', borderRadius: '12px',
-                                        marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between',
-                                        alignItems: 'center', cursor: 'pointer'
-                                    }}
-                                >
-                                    <div>
-                                        <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{ex.name}</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{ex.targetMuscleCategory}</div>
+                            {(exerciseDb || []).filter(ex => {
+                                const norm = normalizeExerciseMuscles(ex);
+                                const q = searchQuery.toLowerCase();
+                                return ex.name.toLowerCase().includes(q) ||
+                                    norm.primaryGroup.toLowerCase().includes(q) ||
+                                    norm.primaryRegions.some(r => r.toLowerCase().includes(q));
+                            }).map(ex => {
+                                const norm = normalizeExerciseMuscles(ex);
+                                return (
+                                    <div
+                                        key={ex.id}
+                                        onClick={() => handleAddExercise(ex)}
+                                        style={{
+                                            padding: '1rem', background: 'var(--panel-color)',
+                                            border: '1px solid var(--border-color)', borderRadius: '14px',
+                                            marginBottom: '0.6rem', display: 'flex', justifyContent: 'space-between',
+                                            alignItems: 'center', cursor: 'pointer'
+                                        }}
+                                    >
+                                        <div>
+                                            <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{ex.name}</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
+                                                    Primary: {norm.primaryRegions.join(', ')}
+                                                </span>
+                                                {norm.secondaryRegions.length > 0 && (
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', padding: '2px 6px', borderRadius: '6px' }}>
+                                                        Sec: {norm.secondaryRegions.join(', ')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <Plus size={20} color="var(--accent-color)" />
                                     </div>
-                                    <Plus size={20} color="var(--accent-color)" />
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )
@@ -889,6 +1018,22 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                         setActivePlateCalc(null);
                     }}
                     onClose={() => setActivePlateCalc(null)}
+                />
+            )}
+            {inspectingExercise && (
+                <ExerciseDetailModal
+                    exercise={inspectingExercise}
+                    onClose={() => setInspectingExercise(null)}
+                />
+            )}
+            {showCreateCustomModal && (
+                <CreateExerciseModal
+                    onSave={(newEx) => {
+                        handleAddExercise(newEx);
+                        setShowCreateCustomModal(false);
+                        setShowExerciseModal(false);
+                    }}
+                    onClose={() => setShowCreateCustomModal(false)}
                 />
             )}
         </>

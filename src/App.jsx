@@ -10,11 +10,12 @@ import Onboarding from './components/Onboarding';
 import TemplateEditor from './components/TemplateEditor';
 import WeightLogModal from './components/WeightLogModal';
 import { useAuth } from './context/AuthContext';
-import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises, fetchWeightHistory, logWeightHistory } from './utils/storage';
+import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises, fetchWeightHistory, logWeightHistory, saveExerciseToStorage, deleteExerciseFromStorage, resetExercisesToDefaultStorage } from './utils/storage';
 import { Toaster, toast } from 'react-hot-toast';
 import { DEFAULT_TEMPLATE } from './data/program';
 import { EXERCISE_DATABASE } from './data/exercises';
 import { LayoutDashboard, History as HistoryIcon, TrendingUp, User, Loader2 } from 'lucide-react';
+import PRCelebrationModal from './components/PRCelebrationModal';
 
 function App() {
   const { user, loading: authLoading } = useAuth();
@@ -25,7 +26,9 @@ function App() {
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem('bulkbro-theme') || 'light');
+  const [theme, setTheme] = useState(localStorage.getItem('bulkbro-theme') || 'dark');
+  const [accentTheme, setAccentTheme] = useState(localStorage.getItem('bulkbro-accent') || 'cyber');
+  const [activePR, setActivePR] = useState(null);
 
   // Template state
   const [templates, setTemplates] = useState([DEFAULT_TEMPLATE]);
@@ -41,6 +44,11 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('bulkbro-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-accent', accentTheme);
+    localStorage.setItem('bulkbro-accent', accentTheme);
+  }, [accentTheme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
@@ -172,6 +180,38 @@ function App() {
     }
   };
 
+  const handleSaveExercise = async (exerciseData) => {
+    try {
+      const updatedDb = await saveExerciseToStorage(exerciseData, user?.uid);
+      setExerciseDb(updatedDb);
+    } catch (err) {
+      console.error("Error saving exercise:", err);
+      toast.error("Failed to save exercise");
+    }
+  };
+
+  const handleDeleteExercise = async (exerciseId) => {
+    try {
+      const updatedDb = await deleteExerciseFromStorage(exerciseId, user?.uid);
+      setExerciseDb(updatedDb);
+      toast.success("Exercise removed");
+    } catch (err) {
+      console.error("Error deleting exercise:", err);
+      toast.error("Failed to delete exercise");
+    }
+  };
+
+  const handleResetExercises = async () => {
+    try {
+      const defaultDb = await resetExercisesToDefaultStorage(user?.uid);
+      setExerciseDb(defaultDb);
+      toast.success("Exercises reset to default database");
+    } catch (err) {
+      console.error("Error resetting exercises:", err);
+      toast.error("Failed to reset exercises");
+    }
+  };
+
   if (authLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
@@ -192,6 +232,7 @@ function App() {
           exerciseDb={exerciseDb}
           onSave={handleSaveTemplate}
           onCancel={() => setEditingTemplate(null)}
+          onSaveExercise={handleSaveExercise}
         />
       );
     }
@@ -250,7 +291,21 @@ function App() {
           onLogWeight={() => setShowWeightModal(true)}
         />;
       case 'profile':
-        return <Profile profile={profile} setProfile={setProfile} theme={theme} toggleTheme={toggleTheme} />;
+        return (
+          <Profile
+            profile={profile}
+            setProfile={setProfile}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            accentTheme={accentTheme}
+            onAccentChange={(newAcc) => setAccentTheme(newAcc)}
+            history={history}
+            exerciseDb={exerciseDb}
+            onSaveExercise={handleSaveExercise}
+            onDeleteExercise={handleDeleteExercise}
+            onResetExercises={handleResetExercises}
+          />
+        );
       default:
         return (
           <Dashboard
@@ -306,6 +361,7 @@ function App() {
             profile={profile}
             exerciseDb={exerciseDb}
             workoutStartTime={workoutStartTime}
+            onPRAchieved={(pr) => setActivePR(pr)}
             onFinish={async () => {
               setActiveWorkoutDay(null);
               setIsWorkoutMinimized(false);
@@ -345,6 +401,13 @@ function App() {
             <div style={{ width: '4px', height: '12px', background: 'var(--accent-color)', borderRadius: '2px', animation: 'bar 1s infinite ease-in-out 0.4s' }}></div>
           </div>
         </div>
+      )}
+
+      {activePR && (
+        <PRCelebrationModal
+          prData={activePR}
+          onClose={() => setActivePR(null)}
+        />
       )}
 
       {showWeightModal && (

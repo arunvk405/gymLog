@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { calculate1RM, calculateVolume } from '../utils/analytics';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
-import { Activity, Zap, Flame, Target, Award, History, TrendingUp } from 'lucide-react';
+import { Activity, Zap, Flame, Target, Award, History, TrendingUp, Layers } from 'lucide-react';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler
 } from 'chart.js';
@@ -9,6 +9,8 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 import { Bar, Line } from 'react-chartjs-2';
 import ExerciseAnalytics from './ExerciseAnalytics';
+import AnatomyViewer from './AnatomyViewer';
+import { normalizeExerciseMuscles } from '../data/muscles';
 
 // Defensive date formatter helper
 const safeFormat = (date, formatStr, fallback = 'N/A') => {
@@ -47,14 +49,29 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
         });
 
         const muscleVolumes = {};
+        const regionVolumes = {};
+
         last30Days.forEach(s => {
             s.exercises.forEach(ex => {
                 if (!ex || !ex.sets) return;
                 const vol = calculateVolume(ex.sets);
-                const group = ex.muscleGroup || 'Other';
-                muscleVolumes[group] = (muscleVolumes[group] || 0) + vol;
+                const norm = normalizeExerciseMuscles(ex);
+                
+                muscleVolumes[norm.primaryGroup] = (muscleVolumes[norm.primaryGroup] || 0) + vol;
+                
+                norm.primaryRegions.forEach(r => {
+                    regionVolumes[r] = (regionVolumes[r] || 0) + vol;
+                });
+                
+                norm.secondaryRegions.forEach(r => {
+                    regionVolumes[r] = (regionVolumes[r] || 0) + (vol * 0.4); // Synergist volume weight
+                });
             });
         });
+
+        const sortedRegions = Object.entries(regionVolumes).sort((a, b) => b[1] - a[1]);
+        const topPrimaryRegions = sortedRegions.slice(0, 5).map(item => item[0]);
+        const topSecondaryRegions = sortedRegions.slice(5, 10).map(item => item[0]);
 
         // Safe BMR calculation
         const weight = profile.bodyweight || 70;
@@ -93,6 +110,9 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
             protein: Math.round(weight * 1.6),
             focusArea,
             muscleVolumes,
+            regionVolumes,
+            topPrimaryRegions,
+            topSecondaryRegions,
             maturity: muscleMaturity,
             intensity: last30Days.length >= 12 ? 'High' : (last30Days.length >= 8 ? 'Moderate' : 'Developing'),
             status: profile.goal === 'fat_loss' ? 'Shredding' : 'Building',
@@ -376,6 +396,23 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                     </div>
                     <div style={{ height: '180px' }}>
                         <Bar data={getMuscleChartData()} options={chartOptions} />
+                    </div>
+                </div>
+
+                {/* 30-DAY ANATOMY HEATMAP */}
+                <div className="panel" style={{ marginBottom: '1.5rem', padding: '1.2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Target size={20} color="var(--accent-color)" />
+                            <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-primary)' }}>30-Day Muscle Target Heatmap</h3>
+                        </div>
+                    </div>
+                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '20px', padding: '1rem' }}>
+                        <AnatomyViewer
+                            primaryRegions={trainingInsights?.topPrimaryRegions || []}
+                            secondaryRegions={trainingInsights?.topSecondaryRegions || []}
+                            height={280}
+                        />
                     </div>
                 </div>
 

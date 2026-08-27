@@ -1,7 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical, Target, Activity, Zap, BicepsFlexed, Shield, Sword } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical, Target, Activity, Zap, BicepsFlexed, Shield, Sword, Info, Pencil } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { DEFAULT_TEMPLATE } from '../data/program';
+import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles } from '../data/muscles';
+import ExerciseDetailModal from './ExerciseDetailModal';
+import CreateExerciseModal from './CreateExerciseModal';
+import AnatomyViewer from './AnatomyViewer';
+import { useAuth } from '../context/AuthContext';
+import { canEditExercise } from '../utils/storage';
 import { toast } from 'react-hot-toast';
 
 const getWorkoutIcon = (name = "") => {
@@ -14,27 +20,64 @@ const getWorkoutIcon = (name = "") => {
     return <Sword size={16} color="var(--accent-color)" />;
 };
 
-const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
+const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
+    const { user } = useAuth();
     const [search, setSearch] = useState('');
     const [filterGroup, setFilterGroup] = useState('All');
+    const [filterRegion, setFilterRegion] = useState('All');
+    const [inspectingExercise, setInspectingExercise] = useState(null);
+    const [editingExercise, setEditingExercise] = useState(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const inputRef = useRef(null);
 
     useEffect(() => { inputRef.current?.focus(); }, []);
 
+    // Prevent background page body scrolling when ExercisePicker is open
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
+    const availableRegions = useMemo(() => {
+        if (filterGroup === 'All') return [];
+        return getMuscleRegions(filterGroup);
+    }, [filterGroup]);
+
     const filtered = useMemo(() => {
-        let list = exerciseDb || [];
-        if (filterGroup !== 'All') list = list.filter(e => e.muscleGroup === filterGroup);
+        // Show ONLY active exercises from Exercise Master
+        let list = (exerciseDb || []).filter(e => !e.hidden);
+
+        if (filterGroup !== 'All') {
+            list = list.filter(e => {
+                const norm = normalizeExerciseMuscles(e);
+                return norm.primaryGroup === filterGroup || norm.secondaryGroups.includes(filterGroup);
+            });
+        }
+        if (filterRegion !== 'All') {
+            list = list.filter(e => {
+                const norm = normalizeExerciseMuscles(e);
+                return norm.primaryRegions.includes(filterRegion) || norm.secondaryRegions.includes(filterRegion);
+            });
+        }
         if (search.trim()) {
             const q = search.toLowerCase();
-            list = list.filter(e => e.name.toLowerCase().includes(q) || e.muscleGroup.toLowerCase().includes(q));
+            list = list.filter(e => {
+                const norm = normalizeExerciseMuscles(e);
+                return e.name.toLowerCase().includes(q) ||
+                    norm.primaryGroup.toLowerCase().includes(q) ||
+                    norm.primaryRegions.some(r => r.toLowerCase().includes(q)) ||
+                    norm.secondaryRegions.some(r => r.toLowerCase().includes(q));
+            });
         }
         return list;
-    }, [exerciseDb, search, filterGroup]);
+    }, [exerciseDb, search, filterGroup, filterRegion]);
 
     const groups = useMemo(() => {
-        const g = [...new Set((exerciseDb || []).map(e => e.muscleGroup))].sort();
-        return ['All', ...g];
-    }, [exerciseDb]);
+        return ['All', ...ALL_MUSCLE_GROUPS];
+    }, []);
 
     return (
         <div style={{
@@ -52,12 +95,25 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
                         </div>
                         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Select Exercise</h3>
                     </div>
-                    <button onClick={onClose} className="secondary dp-btn" style={{
-                        width: '36px', height: '36px', borderRadius: '50%', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        <X size={20} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            type="button"
+                            onClick={() => setShowCreateModal(true)}
+                            style={{
+                                padding: '6px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
+                                background: 'var(--accent-color)', color: 'white', border: 'none',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                            }}
+                        >
+                            <Plus size={14} /> Add Custom Exercise
+                        </button>
+                        <button onClick={onClose} className="secondary dp-btn" style={{
+                            width: '36px', height: '36px', borderRadius: '50%', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ padding: '0 1rem 1rem 1rem' }}>
@@ -69,17 +125,20 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search exercises..."
+                            placeholder="Search exercise name, head, or muscle..."
                             style={{ paddingLeft: '2.2rem', fontSize: '0.9rem', width: '100%' }}
                         />
                     </div>
 
-                    {/* Muscle Group Filter Chips */}
-                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    {/* Level 1: Muscle Group Filter Chips */}
+                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '6px', overscrollBehavior: 'contain' }}>
                         {groups.map(g => (
                             <button
                                 key={g}
-                                onClick={() => setFilterGroup(g)}
+                                onClick={() => {
+                                    setFilterGroup(g);
+                                    setFilterRegion('All');
+                                }}
                                 style={{
                                     padding: '6px 12px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700,
                                     whiteSpace: 'nowrap', cursor: 'pointer', border: '1px solid var(--border-color)',
@@ -92,53 +151,181 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose }) => {
                             </button>
                         ))}
                     </div>
+
+                    {/* Level 2: Specific Region / Head Filter Chips */}
+                    {availableRegions.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', overflowY: 'hidden', paddingTop: '4px', overscrollBehavior: 'contain' }}>
+                            <button
+                                onClick={() => setFilterRegion('All')}
+                                style={{
+                                    padding: '4px 10px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 700,
+                                    whiteSpace: 'nowrap', cursor: 'pointer', border: '1px dashed var(--border-color)',
+                                    background: filterRegion === 'All' ? 'var(--muted-color)' : 'transparent',
+                                    color: filterRegion === 'All' ? 'var(--accent-color)' : 'var(--text-secondary)'
+                                }}
+                            >
+                                All {filterGroup} Heads
+                            </button>
+                            {availableRegions.map(r => (
+                                <button
+                                    key={r}
+                                    onClick={() => setFilterRegion(r)}
+                                    style={{
+                                        padding: '4px 10px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 700,
+                                        whiteSpace: 'nowrap', cursor: 'pointer', border: '1px solid var(--border-color)',
+                                        background: filterRegion === r ? '#38bdf8' : 'var(--bg-color)',
+                                        color: filterRegion === r ? '#0f172a' : 'var(--text-secondary)'
+                                    }}
+                                >
+                                    {r}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Exercise List */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '1rem', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                 {filtered.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        No exercises found
+                        No exercises found for selected muscle classification
                     </div>
                 )}
-                {filtered.map(ex => (
-                    <button
-                        key={ex.id}
-                        onClick={() => onSelect(ex)}
-                        style={{
-                            width: '100%', textAlign: 'left', padding: '1rem', marginBottom: '8px',
-                            background: 'var(--panel-color)', border: '1px solid var(--border-color)',
-                            borderRadius: '16px', cursor: 'pointer', display: 'flex',
-                            justifyContent: 'space-between', alignItems: 'center',
-                            color: 'var(--text-primary)', transition: 'all 0.2s ease'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ padding: '8px', background: 'var(--muted-color)', borderRadius: '10px' }}>
-                                {getWorkoutIcon(ex.name)}
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{ex.name}</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                    {ex.muscleGroup} · {ex.type}
+                {filtered.map((ex) => {
+                    const norm = normalizeExerciseMuscles(ex);
+                    const canEdit = canEditExercise(ex, user);
+
+                    return (
+                        <div
+                            key={ex.id}
+                            style={{
+                                width: '100%', padding: '1rem', marginBottom: '8px',
+                                background: 'var(--panel-color)', border: '1px solid var(--border-color)',
+                                borderRadius: '16px', display: 'flex',
+                                justifyContent: 'space-between', alignItems: 'center',
+                                color: 'var(--text-primary)', transition: 'all 0.2s ease'
+                            }}
+                        >
+                            {/* Left Edit Icon (Only for creator or Admin) */}
+                            {canEdit && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingExercise(ex);
+                                    }}
+                                    title="Edit Exercise Specs"
+                                    style={{
+                                        width: '36px', height: '36px', borderRadius: '10px',
+                                        background: 'rgba(56, 189, 248, 0.15)',
+                                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', color: 'var(--accent-color)', flexShrink: 0,
+                                        marginRight: '10px'
+                                    }}
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                            )}
+
+                            <div
+                                style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, cursor: 'pointer' }}
+                                onClick={() => onSelect(ex)}
+                            >
+                                <div style={{ padding: '8px', background: 'var(--muted-color)', borderRadius: '10px' }}>
+                                    {getWorkoutIcon(ex.name)}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{ex.name}</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
+                                        {/* Primary Muscle Badge */}
+                                        <span style={{
+                                            fontSize: '0.65rem', fontWeight: 800, color: '#0f172a',
+                                            background: '#38bdf8', padding: '2px 6px', borderRadius: '6px'
+                                        }}>
+                                            Primary: {norm.primaryRegions.join(', ')}
+                                        </span>
+
+                                        {/* Secondary Muscle Badge */}
+                                        {norm.secondaryRegions.length > 0 && (
+                                            <span style={{
+                                                fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b',
+                                                background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                                                padding: '2px 6px', borderRadius: '6px'
+                                            }}>
+                                                Sec: {norm.secondaryRegions.join(', ')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setInspectingExercise(ex)}
+                                    style={{
+                                        background: 'var(--muted-color)', border: 'none', borderRadius: '8px',
+                                        padding: '6px', cursor: 'pointer', color: 'var(--text-secondary)'
+                                    }}
+                                    title="View Anatomy Target"
+                                >
+                                    <Info size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onSelect(ex)}
+                                    style={{
+                                        background: 'rgba(56, 189, 248, 0.15)', border: 'none', borderRadius: '10px',
+                                        padding: '8px', cursor: 'pointer', color: 'var(--accent-color)'
+                                    }}
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </div>
                         </div>
-                        <Plus size={18} color="var(--accent-color)" />
-                    </button>
-                ))}
+                    );
+                })}
             </div>
+
+            {/* Inspect Modal */}
+            {inspectingExercise && (
+                <ExerciseDetailModal
+                    exercise={inspectingExercise}
+                    onClose={() => setInspectingExercise(null)}
+                />
+            )}
+            {/* Create / Edit Custom Exercise Modal */}
+            {(showCreateModal || editingExercise) && (
+                <CreateExerciseModal
+                    exerciseToEdit={editingExercise}
+                    onSave={(savedEx) => {
+                        if (onSaveExercise) onSaveExercise(savedEx);
+                        if (!editingExercise) {
+                            onSelect(savedEx);
+                        }
+                        setShowCreateModal(false);
+                        setEditingExercise(null);
+                    }}
+                    onClose={() => {
+                        setShowCreateModal(false);
+                        setEditingExercise(null);
+                    }}
+                />
+            )}
         </div>
     );
 };
 
-const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
+
+const TemplateEditor = ({ template, exerciseDb, onSave, onCancel, onSaveExercise }) => {
     const isEditing = !!template;
     const [name, setName] = useState(template?.name || '');
     const [days, setDays] = useState(template?.days || []);
     const [expandedDay, setExpandedDay] = useState(template?._expandDay !== undefined ? template._expandDay : null);
     const [pickingForDay, setPickingForDay] = useState(null); // index of day we're picking exercise for
+    const [showAnatomyMap, setShowAnatomyMap] = useState({});
+    const [showCreateCustomForDay, setShowCreateCustomForDay] = useState(null);
 
     const addDay = () => {
         setDays([...days, { day: days.length + 1, name: '', exercises: [] }]);
@@ -252,6 +439,7 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                 exerciseDb={exerciseDb}
                 onSelect={(ex) => addExerciseFromPicker(pickingForDay, ex)}
                 onClose={() => setPickingForDay(null)}
+                onSaveExercise={onSaveExercise}
             />
         );
     }
@@ -469,11 +657,59 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                                                                         <Trash2 size={14} />
                                                                     </button>
                                                                 </div>
-                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.6rem', paddingLeft: '28px' }}>
-                                                                    {ex.muscleGroup} · {ex.type}
+                                                                <div style={{ paddingLeft: '28px', marginBottom: '0.6rem' }}>
+                                                                    {(() => {
+                                                                        const norm = normalizeExerciseMuscles(ex);
+                                                                        const key = `${dayIdx}_${exIdx}`;
+                                                                        const isOpen = showAnatomyMap[key];
+
+                                                                        return (
+                                                                            <div>
+                                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                                                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                                        Primary: {norm.primaryRegions.join(', ')}
+                                                                                    </span>
+                                                                                    {norm.secondaryRegions.length > 0 && (
+                                                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                                            Sec: {norm.secondaryRegions.join(', ')}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            setShowAnatomyMap(prev => ({ ...prev, [key]: !prev[key] }));
+                                                                                        }}
+                                                                                        style={{
+                                                                                            fontSize: '0.65rem', fontWeight: 800,
+                                                                                            color: isOpen ? 'white' : 'var(--accent-color)',
+                                                                                            background: isOpen ? 'var(--accent-color)' : 'rgba(56, 189, 248, 0.12)',
+                                                                                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                                                                                            padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
+                                                                                            display: 'flex', alignItems: 'center', gap: '4px'
+                                                                                        }}
+                                                                                    >
+                                                                                        📷 Muscle Anatomy Image
+                                                                                    </button>
+                                                                                </div>
+                                                                                {isOpen && (
+                                                                                    <div style={{
+                                                                                        marginTop: '0.6rem', padding: '0.5rem', background: 'var(--bg-color)',
+                                                                                        border: '1px solid var(--border-color)', borderRadius: '14px'
+                                                                                    }}>
+                                                                                        <AnatomyViewer
+                                                                                            primaryRegions={norm.primaryRegions}
+                                                                                            secondaryRegions={norm.secondaryRegions}
+                                                                                            primaryGroup={norm.primaryGroup}
+                                                                                            height={160}
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                                 
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.75rem', paddingLeft: '44px' }}>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))', gap: '0.5rem', marginTop: '0.6rem' }}>
                                                                     <div>
                                                                         <label style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.7 }}>SETS</label>
                                                                         <input type="number" min="1" max="10" value={ex.sets}
@@ -509,14 +745,23 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                                     </Droppable>
                                 </DragDropContext>
 
-                                {/* Add Exercise from Library */}
-                                <button className="secondary" onClick={() => setPickingForDay(dayIdx)} style={{
-                                    width: '100%', borderStyle: 'dashed', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                    padding: '0.8rem', fontSize: '0.85rem', fontWeight: 700
-                                }}>
-                                    <Search size={16} /> Browse Exercise Library
-                                </button>
+                                {/* Add Exercise Buttons */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                    <button className="secondary" onClick={() => setPickingForDay(dayIdx)} style={{
+                                        borderStyle: 'dashed', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                        padding: '0.8rem', fontSize: '0.8rem', fontWeight: 700
+                                    }}>
+                                        <Search size={15} /> Browse Library
+                                    </button>
+                                    <button className="secondary" onClick={() => setShowCreateCustomForDay(dayIdx)} style={{
+                                        borderStyle: 'dashed', borderColor: 'var(--accent-color)', color: 'var(--accent-color)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                        padding: '0.8rem', fontSize: '0.8rem', fontWeight: 800
+                                    }}>
+                                        <Plus size={15} /> Create Custom
+                                    </button>
+                                </div>
 
                                 {/* Remove Day */}
                                 <button className="secondary" onClick={() => removeDay(dayIdx)} style={{
@@ -543,6 +788,17 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel }) => {
                     <Plus size={20} color="var(--accent-color)" /> ADD TRAINING DAY
                 </button>
             </div>
+
+            {/* Create Custom Exercise Modal for Day */}
+            {showCreateCustomForDay !== null && (
+                <CreateExerciseModal
+                    onSave={(newEx) => {
+                        addExerciseFromPicker(showCreateCustomForDay, newEx);
+                        setShowCreateCustomForDay(null);
+                    }}
+                    onClose={() => setShowCreateCustomForDay(null)}
+                />
+            )}
         </div>
     );
 };

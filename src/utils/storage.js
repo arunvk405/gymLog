@@ -1,6 +1,7 @@
 import { db, auth, storage } from '../firebase';
 import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { EXERCISE_DATABASE } from '../data/exercises';
 
 export const saveWorkout = async (workout, uid, workoutDate) => {
     if (!uid) throw new Error("User not authenticated");
@@ -231,6 +232,27 @@ export const deleteTemplate = async (id, uid, docId) => {
 
 // ========== EXERCISE DATABASE ==========
 
+const LOCAL_EXERCISES_KEY = 'bulkbro_exercise_db';
+let exerciseCache = null;
+
+export const ADMIN_EMAIL = 'arunvk405@gmail.com';
+
+export const canEditExercise = (exercise, user) => {
+    if (!exercise) return false;
+    const userEmail = user?.email?.toLowerCase() || '';
+    const isAdmin = userEmail === ADMIN_EMAIL;
+    if (isAdmin) return true;
+
+    // Custom exercises created by current user or local custom exercises
+    if (exercise.isCustom || exercise.createdBy || exercise.createdByEmail) {
+        if (exercise.createdBy && user?.uid && exercise.createdBy === user.uid) return true;
+        if (exercise.createdByEmail && userEmail && exercise.createdByEmail.toLowerCase() === userEmail) return true;
+        if (exercise.isCustom && !exercise.createdBy && !exercise.createdByEmail) return true;
+    }
+
+    return false;
+};
+
 export const seedExercises = async (exercises) => {
     try {
         const batch = [];
@@ -246,25 +268,125 @@ export const seedExercises = async (exercises) => {
     }
 };
 
-// In-memory cache so we don't fetch on every render
-let exerciseCache = null;
-
 export const fetchExercises = async () => {
-    if (exerciseCache) return exerciseCache;
     try {
-        const snap = await getDocs(collection(db, 'exercises'));
-        const exercises = [];
-        snap.forEach(d => exercises.push(d.data()));
-        if (exercises.length > 0) {
-            exerciseCache = exercises.sort((a, b) => a.muscleGroup.localeCompare(b.muscleGroup) || a.name.localeCompare(b.name));
-            return exerciseCache;
+        let localList = [];
+        const localStored = localStorage.getItem(LOCAL_EXERCISES_KEY);
+        if (localStored) {
+            try {
+                const parsed = JSON.parse(localStored);
+                if (Array.isArray(parsed)) {
+                    localList = parsed;
+                }
+            } catch (e) {
+                console.error("Error parsing local exercises:", e);
+            }
         }
-    } catch (e) {
-        if (e.code === 'permission-denied') {
-            console.warn("Firestore permissions denied for 'exercises'. Falling back to local database.");
-        } else {
-            console.error("Fetch exercises error:", e);
+
+        let remoteList = [];
+        try {
+            const snap = await getDocs(collection(db, 'exercises'));
+            snap.forEach(d => remoteList.push(d.data()));
+        } catch (e) {
+            // Silent fallback if offline or no Firestore rules
         }
+
+        const exerciseMap = new Map();
+
+        // 1. Add all built-in defaults from EXERCISE_DATABASE
+        EXERCISE_DATABASE.forEach(ex => {
+            exerciseMap.set(String(ex.id), ex);
+        });
+
+        // 2. Overlay remote Firestore exercises
+        remoteList.forEach(ex => {
+            if (ex && ex.id) {
+                const existing = exerciseMap.get(String(ex.id)) || {};
+                exerciseMap.set(String(ex.id), { ...existing, ...ex });
+            }
+        });
+
+        // 3. Overlay local storage exercises / user edits
+        localList.forEach(ex => {
+            if (ex && ex.id) {
+                const existing = exerciseMap.get(String(ex.id)) || {};
+                exerciseMap.set(String(ex.id), { ...existing, ...ex });
+            }
+        });
+
+        const merged = Array.from(exerciseMap.values());
+        exerciseCache = merged;
+        localStorage.setItem(LOCAL_EXERCISES_KEY, JSON.stringify(merged));
+        return exerciseCache;
+    } catch (err) {
+        console.error("Fetch exercises overall error:", err);
+        exerciseCache = EXERCISE_DATABASE;
+        return EXERCISE_DATABASE;
     }
-    return null; // null means "not seeded yet"
+};
+
+export const saveExerciseToStorage = async (exercise, uid) => {
+    try {
+        const currentDb = await fetchExercises();
+        const updated = [...currentDb];
+        const existingIdx = updated.findIndex(e => e.id === exercise.id);
+
+        if (existingIdx >= 0) {
+            updated[existingIdx] = { ...updated[existingIdx], ...exercise };
+        } else {
+            updated.push(exercise);
+        }
+
+        exerciseCache = updated;
+        localStorage.setItem(LOCAL_EXERCISES_KEY, JSON.stringify(updated));
+
+        if (uid) {
+            try {
+                await setDoc(doc(db, 'exercises', exercise.id), {
+                    ...exercise,
+                    userId: uid,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (e) {
+                console.warn("Firestore exercise save fallback:", e);
+            }
+        }
+        return updated;
+    } catch (e) {
+        console.error("Error in saveExerciseToStorage:", e);
+        throw e;
+    }
+};
+
+export const deleteExerciseFromStorage = async (exerciseId, uid) => {
+    try {
+        const currentDb = await fetchExercises();
+        const updated = currentDb.filter(e => String(e.id) !== String(exerciseId));
+
+        exerciseCache = updated;
+        localStorage.setItem(LOCAL_EXERCISES_KEY, JSON.stringify(updated));
+
+        if (uid) {
+            try {
+                await deleteDoc(doc(db, 'exercises', String(exerciseId)));
+            } catch (e) {
+                console.warn("Firestore delete exercise fallback:", e);
+            }
+        }
+        return updated;
+    } catch (e) {
+        console.error("Error in deleteExerciseFromStorage:", e);
+        throw e;
+    }
+};
+
+export const resetExercisesToDefaultStorage = async (uid) => {
+    try {
+        localStorage.removeItem(LOCAL_EXERCISES_KEY);
+        exerciseCache = EXERCISE_DATABASE;
+        return EXERCISE_DATABASE;
+    } catch (e) {
+        console.error("Reset exercises error:", e);
+        return EXERCISE_DATABASE;
+    }
 };

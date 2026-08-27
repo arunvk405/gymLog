@@ -13,17 +13,33 @@ export const calculateVolume = (sets) => {
     return sets.reduce((total, set) => total + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0);
 };
 
+const LEVEL_COLORS = {
+    'Advanced': '#38bdf8',
+    'Intermediate': '#34d399',
+    'Novice': '#f59e0b',
+    'Beginner': '#a855f7',
+    'N/A': 'var(--text-secondary)'
+};
+
 export const getStrengthLevel = (exerciseId, bw, oneRM) => {
-    if (!bw || !oneRM) return 'N/A';
-    const ratio = oneRM / bw;
-    const levels = STRENGTH_LEVELS[exerciseId.split('_')[0].toUpperCase()];
+    let label = 'N/A';
+    if (bw && oneRM) {
+        const ratio = oneRM / bw;
+        const key = exerciseId ? exerciseId.split('_')[0].toUpperCase() : '';
+        const levels = STRENGTH_LEVELS[key] || STRENGTH_LEVELS[exerciseId?.toUpperCase()];
 
-    if (!levels) return 'N/A';
+        if (levels) {
+            if (ratio >= levels.Advanced) label = 'Advanced';
+            else if (ratio >= levels.Intermediate) label = 'Intermediate';
+            else if (ratio >= levels.Novice) label = 'Novice';
+            else label = 'Beginner';
+        }
+    }
 
-    if (ratio >= levels.Advanced) return 'Advanced';
-    if (ratio >= levels.Intermediate) return 'Intermediate';
-    if (ratio >= levels.Novice) return 'Novice';
-    return 'Beginner';
+    return {
+        label,
+        color: LEVEL_COLORS[label] || 'var(--text-secondary)'
+    };
 };
 
 export const getPersonalRecords = (history) => {
