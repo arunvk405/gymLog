@@ -17,9 +17,7 @@ export const saveWorkout = async (workout, uid, workoutDate) => {
     };
 
     try {
-        console.log("Saving to new BulkBro project...", workoutData);
         const docRef = await addDoc(collection(db, 'workouts'), workoutData);
-        console.log("Workout saved! ID:", docRef.id);
         return docRef.id;
     } catch (e) {
         console.error("Firestore Save Error:", e);
@@ -35,7 +33,7 @@ export const updateWorkout = async (workoutId, data) => {
         console.error("Update workout error:", e);
         throw e;
     }
-};export const deleteWorkout = async (workoutId) => {
+}; export const deleteWorkout = async (workoutId) => {
     if (!workoutId) throw new Error("No workout ID");
     try {
         await deleteDoc(doc(db, 'workouts', workoutId));
@@ -48,14 +46,12 @@ export const updateWorkout = async (workoutId, data) => {
 export const fetchHistory = async (uid) => {
     if (!uid) return [];
     try {
-        console.log(`Searching for workouts where userId == ${uid}...`);
         const q = query(
             collection(db, 'workouts'),
             where('userId', '==', uid)
         );
         const querySnapshot = await getDocs(q);
         const history = [];
-        console.log(`Found ${querySnapshot.size} total documents in 'workouts' for this user.`);
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
@@ -72,7 +68,7 @@ export const fetchHistory = async (uid) => {
         });
 
         const sorted = history.sort((a, b) => new Date(b.date) - new Date(a.date));
-        console.log("Final processed history:", sorted);
+
         return sorted;
     } catch (e) {
         console.error("Firebase fetchHistory error:", e);
@@ -186,7 +182,6 @@ export const saveTemplate = async (template, uid) => {
             userId: uid,
             updatedAt: new Date().toISOString()
         });
-        console.log("Template saved successfully:", templateId);
         return templateId;
     } catch (e) {
         console.error("Firestore Save Template Error:", e);
@@ -221,9 +216,7 @@ export const deleteTemplate = async (id, uid, docId) => {
         // If we have the exact docId from fetchTemplates, use it.
         // Otherwise try the standard prefixed naming.
         const targetId = docId || `${uid}_${id}`;
-        console.log(`Deleting template: ${id} (DocPath: ${targetId})`);
         await deleteDoc(doc(db, 'templates', targetId));
-        console.log("Template deleted successfully from Firestore");
     } catch (e) {
         console.error("Firestore Delete Template Error:", e);
         throw e;
@@ -260,7 +253,6 @@ export const seedExercises = async (exercises) => {
             batch.push(setDoc(doc(db, 'exercises', ex.id), ex));
         }
         await Promise.all(batch);
-        console.log(`Seeded ${exercises.length} exercises to Firestore`);
         return true;
     } catch (e) {
         console.error("Seed exercises error:", e);
