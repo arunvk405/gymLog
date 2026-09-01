@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="50%" stop-color="#030712" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Cyan Neon Accent Gradient -->
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Electric Highlights -->
+    <linearGradient id="electricBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Plate Metallic Gradient -->
+    <linearGradient id="plateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark Rounded Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Subtle Outer Rim Glow -->
+  <rect x="6" y="6" width="500" height="500" rx="106" fill="none" stroke="#38bdf8" stroke-width="3" stroke-opacity="0.25" />
+
+  <!-- Central Emblem: Stylized Power Monogram "B" & Dumbbell -->
+  <g transform="translate(0, 0)" filter="url(#glow)">
+    <!-- Back Glow Silhouette -->
+    <path d="M 140 100 L 290 100 C 350 100 390 135 390 190 C 390 230 365 252 335 256 C 375 262 400 290 400 340 C 400 400 350 412 290 412 L 140 412 Z" 
+          fill="none" stroke="#0ea5e9" stroke-width="18" stroke-opacity="0.35" stroke-linejoin="round" />
+
+    <!-- Main Outer B Outline -->
+    <path d="M 148 108 L 285 108 C 340 108 376 140 376 190 C 376 226 352 248 320 256 C 360 262 384 290 384 336 C 384 390 340 404 285 404 L 148 404 Z" 
+          fill="url(#plateGrad)" stroke="url(#neonCyan)" stroke-width="12" stroke-linejoin="round" />
+
+    <!-- Top Loop Cutout -->
+    <path d="M 216 160 L 272 160 C 298 160 316 172 316 194 C 316 216 298 228 272 228 L 216 228 Z" 
+          fill="#030712" stroke="url(#neonCyan)" stroke-width="8" stroke-linejoin="round" />
+
+    <!-- Bottom Loop Cutout -->
+    <path d="M 216 284 L 276 284 C 304 284 324 296 324 320 C 324 344 304 356 276 356 L 216 356 Z" 
+          fill="#030712" stroke="url(#neonCyan)" stroke-width="8" stroke-linejoin="round" />
+
+    <!-- Integrated Hex Dumbbell Crossbar & Knurling -->
+    <!-- Central Bar -->
+    <rect x="74" y="240" width="364" height="32" rx="6" fill="url(#electricBlue)" stroke="#38bdf8" stroke-width="4" />
+    
+    <!-- Knurling Texture on Grip -->
+    <line x1="220" y1="242" x2="220" y2="270" stroke="#0284c7" stroke-width="3" />
+    <line x1="232" y1="242" x2="232" y2="270" stroke="#0284c7" stroke-width="3" />
+    <line x1="244" y1="242" x2="244" y2="270" stroke="#0284c7" stroke-width="3" />
+    <line x1="256" y1="242" x2="256" y2="270" stroke="#0284c7" stroke-width="3" />
+    <line x1="268" y1="242" x2="268" y2="270" stroke="#0284c7" stroke-width="3" />
+    <line x1="280" y1="242" x2="280" y2="270" stroke="#0284c7" stroke-width="3" />
+    <line x1="292" y1="242" x2="292" y2="270" stroke="#0284c7" stroke-width="3" />
+
+    <!-- Left Dumbbell Plates (Hexagonal Silhouette) -->
+    <!-- Outer Plate -->
+    <polygon points="68,206 102,188 102,324 68,306 48,272 48,240" fill="url(#plateGrad)" stroke="url(#neonCyan)" stroke-width="8" stroke-linejoin="round" />
+    <polygon points="102,188 132,172 132,340 102,324" fill="#0f172a" stroke="url(#electricBlue)" stroke-width="6" stroke-linejoin="round" />
+    <!-- Plate Collar -->
+    <rect x="132" y="232" width="14" height="48" rx="4" fill="url(#neonCyan)" />
+
+    <!-- Right Dumbbell Plates (Hexagonal Silhouette) -->
+    <!-- Plate Collar -->
+    <rect x="366" y="232" width="14" height="48" rx="4" fill="url(#neonCyan)" />
+    <!-- Inner Plate -->
+    <polygon points="410,188 380,172 380,340 410,324" fill="#0f172a" stroke="url(#electricBlue)" stroke-width="6" stroke-linejoin="round" />
+    <!-- Outer Plate -->
+    <polygon points="444,206 410,188 410,324 444,306 464,272 464,240" fill="url(#plateGrad)" stroke="url(#neonCyan)" stroke-width="8" stroke-linejoin="round" />
+  </g>
+</svg>
