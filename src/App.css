@@ -154,8 +154,13 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: 1rem !important;
   }
 
-  input, select, button {
-    font-size: 0.9rem !important;
+  /* Prevent iOS Safari / mobile browsers from auto-zooming on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  button {
+    font-size: 0.9rem;
   }
 }
 
@@ -279,7 +284,8 @@ button.secondary:hover {
 }
 
 input,
-select {
+select,
+textarea {
   background-color: var(--panel-color);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -287,12 +293,14 @@ select {
   border-radius: 12px;
   font-family: inherit;
   width: 100%;
-  font-size: 1rem;
+  font-size: 16px; /* Prevents iOS auto-zoom on input focus */
+  touch-action: manipulation;
   transition: all 0.2s;
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--text-primary);
   box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);

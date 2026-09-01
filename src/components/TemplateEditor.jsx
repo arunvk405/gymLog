@@ -126,7 +126,7 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search exercise name, head, or muscle..."
-                            style={{ paddingLeft: '2.2rem', fontSize: '0.9rem', width: '100%' }}
+                            style={{ paddingLeft: '2.2rem', fontSize: '16px', width: '100%' }}
                         />
                     </div>
 

@@ -259,7 +259,7 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Search master exercises by name, head, or muscle..."
-                        style={{ paddingLeft: '2.4rem', fontSize: '0.9rem', width: '100%', borderRadius: '14px' }}
+                        style={{ paddingLeft: '2.4rem', fontSize: '16px', width: '100%', borderRadius: '14px' }}
                     />
                 </div>
 
