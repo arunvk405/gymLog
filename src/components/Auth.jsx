@@ -27,6 +27,8 @@ const Auth = () => {
             console.error("Auth Error:", err);
             let msg = err.message.replace('Firebase: ', '');
             if (err.code === 'auth/invalid-credential') msg = "Invalid email or password.";
+            if (err.code === 'auth/email-already-in-use') msg = "This email is already registered. Try logging in.";
+            if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
             setError(msg);
         } finally {
             setLoading(false);
@@ -45,8 +47,10 @@ const Auth = () => {
                 setError("Popup blocked! Please allow popups for this site.");
             } else if (err.code === 'auth/operation-not-allowed') {
                 setError("Google login is not enabled in Firebase Console.");
-            } else if (err.code !== 'auth/popup-closed-by-user') {
-                setError(err.message.replace('Firebase: ', ''));
+            } else if (err.code === 'auth/unauthorized-domain') {
+                setError("Netlify domain is not authorized in Firebase Console. Please add your Netlify URL to Firebase Authorized Domains.");
+            } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+                setError(err.message ? err.message.replace('Firebase: ', '') : "Google login failed.");
             }
         } finally {
             setSocialLoading(null);
@@ -65,7 +69,7 @@ const Auth = () => {
                 </p>
 
                 {error && (
-                    <div style={{ background: 'rgba(248, 81, 73, 0.1)', color: 'var(--error-color)', padding: '0.8rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--error-color)' }}>
+                    <div style={{ background: 'rgba(248, 81, 73, 0.1)', color: 'var(--error-color)', padding: '0.8rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--error-color)', lineHeight: 1.4 }}>
                         {error}
                     </div>
                 )}
@@ -146,7 +150,7 @@ const Auth = () => {
                 </div>
 
                 <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                    <button type="button" className="secondary" onClick={() => setIsLogin(!isLogin)} style={{ border: 'none', background: 'none', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, textTransform: 'none' }}>
+                    <button type="button" className="secondary" onClick={() => { setIsLogin(!isLogin); setError(''); }} style={{ border: 'none', background: 'none', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 700, textTransform: 'none' }}>
                         {isLogin ? "Create an Account" : "Back to Login"}
                     </button>
                 </div>
