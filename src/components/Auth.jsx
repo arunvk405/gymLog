@@ -43,14 +43,19 @@ const Auth = () => {
             await loginWithGoogle();
         } catch (err) {
             console.error("Google Login Error:", err);
+            const currentHost = window.location.hostname;
             if (err.code === 'auth/popup-blocked') {
-                setError("Popup blocked! Please allow popups for this site.");
+                setError("Popup was blocked by your browser. Please allow popups or try again.");
             } else if (err.code === 'auth/operation-not-allowed') {
-                setError("Google login is not enabled in Firebase Console.");
+                setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
             } else if (err.code === 'auth/unauthorized-domain') {
-                setError("Netlify domain is not authorized in Firebase Console. Please add your Netlify URL to Firebase Authorized Domains.");
-            } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-                setError(err.message ? err.message.replace('Firebase: ', '') : "Google login failed.");
+                setError(`Domain "${currentHost}" is not authorized in Firebase Console. Add "${currentHost}" under Firebase Console > Authentication > Settings > Authorized Domains.`);
+            } else if (err.code === 'auth/popup-closed-by-user') {
+                setError("Sign-in popup was closed before completing. Please try again.");
+            } else if (err.code === 'auth/cancelled-popup-request') {
+                setError("Sign-in was cancelled. Please try again.");
+            } else {
+                setError(err.message ? err.message.replace('Firebase: ', '') : "Google login failed. Please try again.");
             }
         } finally {
             setSocialLoading(null);
@@ -58,7 +63,7 @@ const Auth = () => {
     };
 
     return (
-        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '90vh', padding: '1rem' }}>
+        <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '90vh', padding: 'calc(1.5rem + env(safe-area-inset-top, 0px)) 1rem calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
             <div className="panel" style={{ width: '100%', maxWidth: '400px' }}>
                 <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '0.5rem' }}>
                     Bulk<span style={{ color: 'var(--accent-color)' }}>Bro</span>

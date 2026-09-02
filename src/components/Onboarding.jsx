@@ -7,7 +7,7 @@ const Onboarding = ({ onComplete }) => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState({
-        displayName: user.displayName || '',
+        displayName: user?.displayName || '',
         bodyweight: 75,
         height: 175,
         age: 25,
@@ -21,7 +21,7 @@ const Onboarding = ({ onComplete }) => {
             legPress: 110,
             overheadPress: 25
         },
-        photoURL: user.photoURL || null
+        photoURL: user?.photoURL || null
     });
 
     const handleSave = async (e) => {
@@ -29,7 +29,9 @@ const Onboarding = ({ onComplete }) => {
         setLoading(true);
         try {
             const finalProfile = { ...profile, isNewUser: false };
-            await saveProfile(finalProfile, user.uid);
+            if (user?.uid) {
+                await saveProfile(finalProfile, user.uid);
+            }
             onComplete(finalProfile);
         } catch (err) {
             console.error(err);
@@ -39,7 +41,7 @@ const Onboarding = ({ onComplete }) => {
     };
 
     return (
-        <div className="fade-in" style={{ padding: '2rem 1rem', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="fade-in" style={{ padding: 'calc(2rem + env(safe-area-inset-top, 0px)) 1rem calc(2rem + env(safe-area-inset-bottom, 0px))', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                 <div style={{ background: 'var(--text-primary)', width: '70px', height: '70px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: 'white' }}>
                     <Activity size={35} />

@@ -129,16 +129,21 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
-  padding: 1rem;
-  padding-bottom: 6.5rem;
+  padding-top: calc(1.2rem + env(safe-area-inset-top, 0px));
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Mobile-Friendly Optimizations */
 @media (max-width: 600px) {
   .app-container {
-    padding: 0.65rem;
-    padding-bottom: 6rem;
+    padding-top: calc(1.25rem + env(safe-area-inset-top, 0px));
+    padding-left: calc(0.75rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(0.75rem + env(safe-area-inset-right, 0px));
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   }
+
 
   h1 {
     font-size: 1.25rem !important;

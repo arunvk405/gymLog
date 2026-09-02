@@ -94,9 +94,6 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div>
                     <h1 style={{ fontSize: '2.2rem', margin: 0 }} className="text-gradient">BulkBro</h1>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        Precision Training & Recovery Intelligence
-                    </span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>

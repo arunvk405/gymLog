@@ -443,7 +443,11 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                 {/* STICKY HEADER */}
                 <div style={{
                     position: 'sticky', top: 0, zIndex: 50,
-                    background: 'var(--bg-color)', padding: '0.75rem 1rem',
+                    background: 'var(--bg-color)',
+                    paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+                    paddingBottom: '0.75rem',
+                    paddingLeft: 'calc(1rem + env(safe-area-inset-left, 0px))',
+                    paddingRight: 'calc(1rem + env(safe-area-inset-right, 0px))',
                     borderBottom: '1px solid var(--border-color)',
                     backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)'
                 }}>
