@@ -4,7 +4,9 @@ import {
     signOut,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 
@@ -15,6 +17,17 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Handle credential returned from Google redirect flow
+        getRedirectResult(auth)
+            .then((result) => {
+                if (result?.user) {
+                    setUser(result.user);
+                }
+            })
+            .catch((error) => {
+                console.error("Firebase getRedirectResult error:", error);
+            });
+
         const unsubscribe = onAuthStateChanged(auth, (authUser) => {
             setUser(authUser);
             setLoading(false);
@@ -28,12 +41,23 @@ export const AuthProvider = ({ children }) => {
     const logout = () => signOut(auth);
 
     const loginWithGoogle = async () => {
+        const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+        const isStandalone = (typeof window !== 'undefined' && (
+            window.navigator.standalone === true ||
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        ));
+
+        // Use redirect on iOS / Standalone PWA where popups cannot share opener storage
+        if (isStandalone || isIOS) {
+            return signInWithRedirect(auth, googleProvider);
+        }
+
         try {
-            await signInWithPopup(auth, googleProvider);
+            return await signInWithPopup(auth, googleProvider);
         } catch (err) {
-            console.error("Google Login Error:", err);
-            if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
-                return;
+            console.error("Google Popup Error, attempting redirect fallback:", err);
+            if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+                return signInWithRedirect(auth, googleProvider);
             }
             throw err;
         }
