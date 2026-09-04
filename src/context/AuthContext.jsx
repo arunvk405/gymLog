@@ -4,87 +4,23 @@ import {
     signOut,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult,
-    setPersistence,
-    browserLocalPersistence,
-    linkWithPopup,
-    linkWithCredential,
-    unlink,
-    GoogleAuthProvider
+    signInWithPopup
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
-import { toast } from 'react-hot-toast';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [redirectError, setRedirectError] = useState(null);
 
     useEffect(() => {
-        let isMounted = true;
-        let authResolved = false;
-        let redirectResolved = false;
-
-        const maybeFinishLoading = () => {
-            if (authResolved && redirectResolved && isMounted) {
-                setLoading(false);
-            }
-        };
-
-        // Ensure persistence is set to browser local storage
-        setPersistence(auth, browserLocalPersistence).catch(err => {
-            console.warn("Persistence setting notice:", err);
-        });
-
-        // 1. Process any pending redirect results (from mobile or fallback redirects)
-        getRedirectResult(auth)
-            .then((result) => {
-                if (result?.user && isMounted) {
-                    setUser(result.user);
-                }
-            })
-            .catch((err) => {
-                console.error("Firebase Redirect Login Error:", err);
-                if (isMounted) {
-                    setRedirectError(err);
-                }
-            })
-            .finally(() => {
-                redirectResolved = true;
-                maybeFinishLoading();
-            });
-
-        // 2. Listen to active auth state
         const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-            if (isMounted) {
-                if (authUser) {
-                    setUser(authUser);
-                } else {
-                    setUser(prev => prev || null);
-                }
-                authResolved = true;
-                maybeFinishLoading();
-            }
+            setUser(authUser);
+            setLoading(false);
         });
 
-        // Failsafe timer so loading is never stuck indefinitely on slow mobile networks
-        const failsafe = setTimeout(() => {
-            if (isMounted) {
-                authResolved = true;
-                redirectResolved = true;
-                maybeFinishLoading();
-            }
-        }, 3500);
-
-        return () => {
-            isMounted = false;
-            clearTimeout(failsafe);
-            unsubscribe();
-        };
+        return unsubscribe;
     }, []);
 
     const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
@@ -93,53 +29,29 @@ export const AuthProvider = ({ children }) => {
 
     const loginWithGoogle = async () => {
         try {
-            return await signInWithPopup(auth, googleProvider);
+            await signInWithPopup(auth, googleProvider);
         } catch (err) {
-            console.error("Google Sign-In Error:", err);
-            if (err.code === 'auth/popup-blocked') {
-                return signInWithRedirect(auth, googleProvider);
+            console.error("Google Login Error:", err);
+            if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+                return;
             }
             throw err;
         }
     };
-
-    const linkGoogleAccount = async () => {
-        if (!auth.currentUser) throw new Error("No active user to link");
-        try {
-            const res = await linkWithPopup(auth.currentUser, googleProvider);
-            setUser({ ...auth.currentUser });
-            toast.success("Google account connected!");
-            return res;
-        } catch (err) {
-            console.error("Link Google error:", err);
-            if (err.code === 'auth/credential-already-in-use') {
-                toast.error("This Google account is already linked to another user.");
-            } else {
-                toast.error("Failed to link Google: " + err.message);
-            }
-            throw err;
-        }
-    };
-
-    const loginWithGoogleRedirect = () => signInWithRedirect(auth, googleProvider);
 
     return (
-        <AuthContext.Provider value={{
-            user,
-            loading,
-            login,
-            signup,
-            logout,
-            loginWithGoogle,
-            loginWithGoogleRedirect,
-            linkGoogleAccount,
-            redirectError
-        }}>
-            {!loading && children}
+        <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle }}>
+            {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
 
 

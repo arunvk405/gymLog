@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, LogIn, UserPlus, Loader2, Info } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Loader2 } from 'lucide-react';
+import packageJson from '../../package.json';
 
 const Auth = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -10,27 +11,11 @@ const Auth = () => {
     const [socialLoading, setSocialLoading] = useState(null);
     const [error, setError] = useState('');
 
-    const { login, signup, loginWithGoogle, loginWithGoogleRedirect, redirectError } = useAuth();
-
-    const currentHost = window.location.hostname;
-    const isLocalNetworkIP = currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.includes('firebaseapp.com') && !currentHost.includes('web.app');
-
-    // Display any redirect error if occurred during page reload
-    React.useEffect(() => {
-        if (redirectError) {
-            if (redirectError.code === 'auth/unauthorized-domain') {
-                setError(`Domain/IP "${currentHost}" is not authorized in Firebase. Add "${currentHost}" in Firebase Console > Authentication > Settings > Authorized Domains.`);
-            } else if (redirectError.code === 'auth/operation-not-allowed') {
-                setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
-            } else {
-                setError(redirectError.message ? redirectError.message.replace('Firebase: ', '') : "Sign-in failed during redirect.");
-            }
-        }
-    }, [redirectError, currentHost]);
+    const { login, signup, loginWithGoogle } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (loading) return;
+        if (loading || socialLoading) return;
         setError('');
         setLoading(true);
         try {
@@ -41,10 +26,14 @@ const Auth = () => {
             }
         } catch (err) {
             console.error("Auth Error:", err);
-            let msg = err.message.replace('Firebase: ', '');
-            if (err.code === 'auth/invalid-credential') msg = "Invalid email or password.";
-            if (err.code === 'auth/email-already-in-use') msg = "This email is already registered. Try logging in.";
-            if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+            let msg = err.message ? err.message.replace('Firebase: ', '') : "Authentication failed.";
+            if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                msg = "Invalid email or password.";
+            } else if (err.code === 'auth/email-already-in-use') {
+                msg = "This email is already registered. Try logging in.";
+            } else if (err.code === 'auth/weak-password') {
+                msg = "Password should be at least 6 characters.";
+            }
             setError(msg);
         } finally {
             setLoading(false);
@@ -52,37 +41,25 @@ const Auth = () => {
     };
 
     const handleGoogleLogin = async () => {
-        if (socialLoading) return;
+        if (socialLoading || loading) return;
         setError('');
         setSocialLoading('google');
         try {
             await loginWithGoogle();
         } catch (err) {
             console.error("Google Login Error:", err);
-            if (err.code === 'auth/popup-blocked') {
-                setError("Popup was blocked by your browser. You can use Email/Password or tap 'Sign In with Redirect' below.");
-            } else if (err.code === 'auth/operation-not-allowed') {
-                setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
-            } else if (err.code === 'auth/unauthorized-domain') {
-                setError(`Domain/IP "${currentHost}" is not authorized in Firebase. Please add "${currentHost}" in Firebase Console > Authentication > Settings > Authorized Domains.`);
-            } else if (err.code === 'auth/popup-closed-by-user') {
-                setError("Sign-in popup was closed before completing. On iPhone/Safari, try signing in with Email & Password or use the redirect button below.");
-            } else if (err.code === 'auth/cancelled-popup-request') {
-                setError("Sign-in was cancelled. Please try again.");
+            if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+                return;
+            }
+            if (err?.code === 'auth/unauthorized-domain') {
+                setError(`Domain "${window.location.hostname}" is not authorized in Firebase Console > Authentication > Settings > Authorized Domains.`);
+            } else if (err?.code === 'auth/operation-not-allowed') {
+                setError("Google Sign-In is not enabled in Firebase Console.");
             } else {
-                setError(err.message ? err.message.replace('Firebase: ', '') : "Google login failed. Please try again.");
+                setError(err?.message ? err.message.replace('Firebase: ', '') : "Failed to sign in with Google.");
             }
         } finally {
             setSocialLoading(null);
-        }
-    };
-
-    const handleGoogleRedirect = async () => {
-        setError('');
-        try {
-            await loginWithGoogleRedirect();
-        } catch (err) {
-            setError(err.message || "Failed to redirect.");
         }
     };
 
@@ -97,29 +74,9 @@ const Auth = () => {
                     {isLogin ? 'Login to continue your journey' : 'Start your fitness profile today'}
                 </p>
 
-                {isLocalNetworkIP && (
-                    <div style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.2rem', fontSize: '0.75rem', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', gap: '8px', alignItems: 'flex-start', lineHeight: 1.4 }}>
-                        <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <div>
-                            <strong>Mobile Network Testing:</strong> If Google Sign-In fails on your iPhone, ensure <code>{currentHost}</code> is added to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</strong>.
-                        </div>
-                    </div>
-                )}
-
                 {error && (
                     <div style={{ background: 'rgba(248, 81, 73, 0.1)', color: 'var(--error-color)', padding: '0.8rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--error-color)', lineHeight: 1.4 }}>
                         {error}
-                        {error.includes("popup") && (
-                            <div style={{ marginTop: '0.8rem' }}>
-                                <button
-                                    type="button"
-                                    onClick={handleGoogleRedirect}
-                                    style={{ background: 'var(--panel-color)', border: '1px solid var(--accent-color)', color: 'var(--accent-color)', padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '6px', cursor: 'pointer' }}
-                                >
-                                    Try Google Login with Full Redirect ➔
-                                </button>
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -203,9 +160,14 @@ const Auth = () => {
                         {isLogin ? "Create an Account" : "Back to Login"}
                     </button>
                 </div>
+
+                <div style={{ marginTop: '1.2rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6, fontWeight: 700, letterSpacing: '0.5px' }}>
+                    v{packageJson.version}
+                </div>
             </div>
         </div>
     );
 };
 
 export default Auth;
+
