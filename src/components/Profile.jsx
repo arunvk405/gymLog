@@ -5,6 +5,7 @@ import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, S
 import { toast } from 'react-hot-toast';
 import ImageCropper from './ImageCropper';
 import ExerciseMasterModal from './ExerciseMasterModal';
+import packageJson from '../../package.json';
 
 const ACCENT_THEMES = [
     { id: 'cyber', name: 'Cyber Neon', color: '#38bdf8' },
@@ -456,7 +457,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
                     </div>
 
                     <div style={{ textAlign: 'center', marginTop: '3rem', paddingBottom: '2rem' }}>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '1px' }}>BULKBRO v1.0.2</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '1px' }}>BULKBRO v{packageJson.version}</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '4px' }}>Precision Training Intelligence</div>
                     </div>
                 </>

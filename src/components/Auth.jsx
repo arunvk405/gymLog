@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, LogIn, UserPlus, Loader2 } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Loader2, Info } from 'lucide-react';
 
 const Auth = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -10,21 +10,23 @@ const Auth = () => {
     const [socialLoading, setSocialLoading] = useState(null);
     const [error, setError] = useState('');
 
-    const { login, signup, loginWithGoogle, redirectError } = useAuth();
+    const { login, signup, loginWithGoogle, loginWithGoogleRedirect, redirectError } = useAuth();
+
+    const currentHost = window.location.hostname;
+    const isLocalNetworkIP = currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.includes('firebaseapp.com') && !currentHost.includes('web.app');
 
     // Display any redirect error if occurred during page reload
     React.useEffect(() => {
         if (redirectError) {
-            const currentHost = window.location.hostname;
             if (redirectError.code === 'auth/unauthorized-domain') {
-                setError(`Domain "${currentHost}" is not authorized in Firebase Console. Add "${currentHost}" under Firebase Console > Authentication > Settings > Authorized Domains.`);
+                setError(`Domain/IP "${currentHost}" is not authorized in Firebase. Add "${currentHost}" in Firebase Console > Authentication > Settings > Authorized Domains.`);
             } else if (redirectError.code === 'auth/operation-not-allowed') {
                 setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
             } else {
-                setError(redirectError.message ? redirectError.message.replace('Firebase: ', '') : "Google sign-in failed during redirect.");
+                setError(redirectError.message ? redirectError.message.replace('Firebase: ', '') : "Sign-in failed during redirect.");
             }
         }
-    }, [redirectError]);
+    }, [redirectError, currentHost]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -57,15 +59,14 @@ const Auth = () => {
             await loginWithGoogle();
         } catch (err) {
             console.error("Google Login Error:", err);
-            const currentHost = window.location.hostname;
             if (err.code === 'auth/popup-blocked') {
-                setError("Popup was blocked by your browser. Please allow popups or use Email/Password sign-in.");
+                setError("Popup was blocked by your browser. You can use Email/Password or tap 'Sign In with Redirect' below.");
             } else if (err.code === 'auth/operation-not-allowed') {
                 setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
             } else if (err.code === 'auth/unauthorized-domain') {
                 setError(`Domain/IP "${currentHost}" is not authorized in Firebase. Please add "${currentHost}" in Firebase Console > Authentication > Settings > Authorized Domains.`);
             } else if (err.code === 'auth/popup-closed-by-user') {
-                setError("Google sign-in popup was closed before completing. Please try again, or sign in with your email & password.");
+                setError("Sign-in popup was closed before completing. On iPhone/Safari, try signing in with Email & Password or use the redirect button below.");
             } else if (err.code === 'auth/cancelled-popup-request') {
                 setError("Sign-in was cancelled. Please try again.");
             } else {
@@ -76,6 +77,15 @@ const Auth = () => {
         }
     };
 
+    const handleGoogleRedirect = async () => {
+        setError('');
+        try {
+            await loginWithGoogleRedirect();
+        } catch (err) {
+            setError(err.message || "Failed to redirect.");
+        }
+    };
+
     return (
         <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '90vh', padding: 'calc(1.5rem + env(safe-area-inset-top, 0px)) 1rem calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
             <div className="panel" style={{ width: '100%', maxWidth: '400px' }}>
@@ -83,13 +93,33 @@ const Auth = () => {
                     Bulk<span style={{ color: 'var(--accent-color)' }}>Bro</span>
                 </h1>
                 <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', fontSize: '1.2rem' }}>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.85rem' }}>
+                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
                     {isLogin ? 'Login to continue your journey' : 'Start your fitness profile today'}
                 </p>
+
+                {isLocalNetworkIP && (
+                    <div style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.2rem', fontSize: '0.75rem', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', gap: '8px', alignItems: 'flex-start', lineHeight: 1.4 }}>
+                        <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                            <strong>Mobile Network Testing:</strong> If Google Sign-In fails on your iPhone, ensure <code>{currentHost}</code> is added to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</strong>.
+                        </div>
+                    </div>
+                )}
 
                 {error && (
                     <div style={{ background: 'rgba(248, 81, 73, 0.1)', color: 'var(--error-color)', padding: '0.8rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--error-color)', lineHeight: 1.4 }}>
                         {error}
+                        {error.includes("popup") && (
+                            <div style={{ marginTop: '0.8rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={handleGoogleRedirect}
+                                    style={{ background: 'var(--panel-color)', border: '1px solid var(--accent-color)', color: 'var(--accent-color)', padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '6px', cursor: 'pointer' }}
+                                >
+                                    Try Google Login with Full Redirect ➔
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -127,7 +157,7 @@ const Auth = () => {
                     </div>
 
                     <button type="submit" disabled={loading || !!socialLoading} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '1rem' }}>
-                        {loading ? <Loader2 size={20} className="spin" /> : (isLogin ? 'Login' : 'Create Account')}
+                        {loading ? <Loader2 size={20} className="spin" /> : (isLogin ? 'Login with Email' : 'Create Account')}
                     </button>
                 </form>
 
