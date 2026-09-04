@@ -20,20 +20,20 @@
 }
 
 [data-theme='dark'] {
-  --bg-color: #020617;
-  --panel-color: #0f172a;
-  --muted-color: #1e293b;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --bg-color: #000000;
+  --panel-color: #111111;
+  --muted-color: #1a1a1a;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a0a0a0;
   --accent-color: #38bdf8;
   --accent-gradient: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
-  --border-color: #1e293b;
+  --border-color: #2a2a2a;
   --success-color: #34d399;
   --error-color: #fb7185;
-  --nav-bg: rgba(2, 6, 23, 0.85);
-  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.6);
+  --nav-bg: rgba(0, 0, 0, 0.88);
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.75);
 }
 
 /* Custom Accent Themes */
@@ -212,8 +212,8 @@ h3 {
 }
 
 [data-theme='dark'] .glass-panel {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(17, 17, 17, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .panel:hover {

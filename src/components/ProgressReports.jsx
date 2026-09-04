@@ -193,9 +193,9 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
             legend: { display: false },
             tooltip: {
                 enabled: true,
-                backgroundColor: isDark ? '#1e293b' : '#ffffff',
-                titleColor: isDark ? '#f8fafc' : '#0f172a',
-                bodyColor: isDark ? '#f8fafc' : '#0f172a',
+                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                titleColor: isDark ? '#f5f5f5' : '#0f172a',
+                bodyColor: isDark ? '#f5f5f5' : '#0f172a',
                 borderColor: isDark ? '#334155' : '#e2e8f0',
                 borderWidth: 1,
                 padding: 12,
@@ -437,7 +437,7 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                 </div>
 
                 {/* SUMMARY INFO */}
-                <div className="panel" style={{ background: isDark ? '#1e293b' : 'var(--muted-color)', border: 'none', marginBottom: '1.5rem' }}>
+                <div className="panel" style={{ background: isDark ? '#1a1a1a' : 'var(--muted-color)', border: 'none', marginBottom: '1.5rem' }}>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                         You are training at <b style={{ color: 'var(--text-primary)' }}>{trainingInsights?.intensity}</b> intensity.
                         Based on your analytics, specializing in <b style={{ color: 'var(--accent-color)' }}>{trainingInsights?.focusArea}</b> exercises this week will ensure symmetrical muscle development.
