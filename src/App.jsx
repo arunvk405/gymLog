@@ -249,14 +249,8 @@ function App() {
       );
     }
 
-    // Loading state
-    if (dataLoading && history.length === 0) {
-      return (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-          <Loader2 size={32} className="spin" color="var(--accent-color)" />
-        </div>
-      );
-    }
+    // Note: no full-screen dataLoading spinner here — the dashboard renders
+    // immediately and data populates as Firestore resolves (feels much faster).
 
     switch (activeTab) {
       case 'dashboard':

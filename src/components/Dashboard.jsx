@@ -62,7 +62,6 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
         });
     }, [history]);
 
-    if (!profile) return <div className="fade-in">Loading profile...</div>;
 
     const getLatest1RM = (exerciseId) => {
         const sessions = history.filter(s => s.exercises && s.exercises.some(e => e.id === exerciseId || (exerciseId === 'squat' && e.id === 'squat_d5') || (exerciseId === 'bench_press' && e.id === 'bench_press_d5') || (exerciseId === 'deadlift' && e.id === 'deadlift_d5')));
@@ -172,7 +171,7 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                     const current1RM = getLatest1RM(ex.id);
                     const target = TARGETS[ex.id]?.target || 0;
                     const progress = Math.min(100, Math.round((current1RM / target) * 100)) || 0;
-                    const level = getStrengthLevel(ex.id, profile.bodyweight, current1RM);
+                    const level = getStrengthLevel(ex.id, profile?.bodyweight || 0, current1RM);
 
                     const Icon = idx === 0 ? Trophy : (idx === 1 ? Zap : TrendingUp);
 

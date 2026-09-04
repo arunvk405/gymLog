@@ -23,7 +23,18 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
     const [showExerciseMaster, setShowExerciseMaster] = useState(false);
     const fileInputRef = useRef(null);
 
-    if (!profile) return <div className="fade-in">Loading profile...</div>;
+    if (!profile) return (
+        <div className="fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {[120, 80, 60, 80].map((w, i) => (
+                <div key={i} style={{
+                    height: '18px', width: `${w}%`, maxWidth: '360px',
+                    background: 'var(--panel-color)', borderRadius: '8px',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    opacity: 0.6
+                }} />
+            ))}
+        </div>
+    );
 
     const heightM = profile.height / 100;
     const bmi = (profile.bodyweight / (heightM * heightM)).toFixed(1);

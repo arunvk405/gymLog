@@ -392,6 +392,11 @@ textarea:focus {
   animation: spin 1s linear infinite;
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.25; }
+}
+
 /* Calendar Heatmap */
 .calendar-grid {
   display: grid;
