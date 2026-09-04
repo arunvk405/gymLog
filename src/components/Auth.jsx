@@ -10,7 +10,21 @@ const Auth = () => {
     const [socialLoading, setSocialLoading] = useState(null);
     const [error, setError] = useState('');
 
-    const { login, signup, loginWithGoogle } = useAuth();
+    const { login, signup, loginWithGoogle, redirectError } = useAuth();
+
+    // Display any redirect error if occurred during page reload
+    React.useEffect(() => {
+        if (redirectError) {
+            const currentHost = window.location.hostname;
+            if (redirectError.code === 'auth/unauthorized-domain') {
+                setError(`Domain "${currentHost}" is not authorized in Firebase Console. Add "${currentHost}" under Firebase Console > Authentication > Settings > Authorized Domains.`);
+            } else if (redirectError.code === 'auth/operation-not-allowed') {
+                setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
+            } else {
+                setError(redirectError.message ? redirectError.message.replace('Firebase: ', '') : "Google sign-in failed during redirect.");
+            }
+        }
+    }, [redirectError]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,13 +59,13 @@ const Auth = () => {
             console.error("Google Login Error:", err);
             const currentHost = window.location.hostname;
             if (err.code === 'auth/popup-blocked') {
-                setError("Popup was blocked by your browser. Please allow popups or try again.");
+                setError("Popup was blocked by your browser. Please allow popups or use Email/Password sign-in.");
             } else if (err.code === 'auth/operation-not-allowed') {
                 setError("Google Sign-In is not enabled in Firebase Console (Authentication > Sign-in method > Google).");
             } else if (err.code === 'auth/unauthorized-domain') {
-                setError(`Domain "${currentHost}" is not authorized in Firebase Console. Add "${currentHost}" under Firebase Console > Authentication > Settings > Authorized Domains.`);
+                setError(`Domain/IP "${currentHost}" is not authorized in Firebase. Please add "${currentHost}" in Firebase Console > Authentication > Settings > Authorized Domains.`);
             } else if (err.code === 'auth/popup-closed-by-user') {
-                setError("Sign-in popup was closed before completing. Please try again.");
+                setError("Google sign-in popup was closed before completing. Please try again, or sign in with your email & password.");
             } else if (err.code === 'auth/cancelled-popup-request') {
                 setError("Sign-in was cancelled. Please try again.");
             } else {
