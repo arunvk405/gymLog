@@ -2,6 +2,14 @@
   command = "npm run build"
   publish = "dist"
 
+# Firebase Auth proxy – must come before the SPA catch-all
+# Makes /__/auth/* first-party so iOS Safari doesn't block the OAuth session
+[[redirects]]
+  from = "/__/auth/*"
+  to = "https://gymlog-app-83f7f.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

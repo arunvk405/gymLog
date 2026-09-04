@@ -10,9 +10,15 @@ import {
 } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
+// Use the site's own hostname as authDomain in production so the OAuth redirect
+// goes through our Netlify proxy (/__/auth/*) and is treated as first-party by
+// iOS Safari. Falls back to Firebase's default on localhost so dev login works.
+const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1';
+
 const firebaseConfig = {
     apiKey: "AIzaSyDsUw2gtGWv2gb0aVTLCqAvs176UeyvPSQ",
-    authDomain: "gymlog-app-83f7f.firebaseapp.com",
+    authDomain: isLocalDev ? "gymlog-app-83f7f.firebaseapp.com" : hostname,
     projectId: "gymlog-app-83f7f",
     storageBucket: "gymlog-app-83f7f.firebasestorage.app",
     messagingSenderId: "618525799175",
