@@ -12,28 +12,39 @@ import { auth, googleProvider } from '../firebase';
 
 const AuthContext = createContext();
 
+// Immediately invoke getRedirectResult on app boot to capture redirect state before storage changes
+const redirectPromise = getRedirectResult(auth).catch((error) => {
+    console.error("Redirect result error:", error?.code, error?.message);
+    return null;
+});
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Handle credential returned from Google redirect flow
-        getRedirectResult(auth)
-            .then((result) => {
-                if (result?.user) {
-                    setUser(result.user);
-                }
-            })
-            .catch((error) => {
-                console.error("Firebase getRedirectResult error:", error);
-            });
+        let isMounted = true;
 
-        const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-            setUser(authUser);
-            setLoading(false);
+        // Check if returning from a redirect
+        redirectPromise.then((result) => {
+            if (isMounted && result?.user) {
+                setUser(result.user);
+                setLoading(false);
+            }
         });
 
-        return unsubscribe;
+        // Listen for standard auth state changes
+        const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+            if (isMounted) {
+                setUser(authUser);
+                setLoading(false);
+            }
+        });
+
+        return () => {
+            isMounted = false;
+            unsubscribe();
+        };
     }, []);
 
     const login = (email, password) => signInWithEmailAndPassword(auth, email, password);

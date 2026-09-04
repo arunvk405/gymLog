@@ -1,6 +1,13 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import {
+    initializeAuth,
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
+    browserPopupRedirectResolver,
+    GoogleAuthProvider,
+    getAuth
+} from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -12,9 +19,21 @@ const firebaseConfig = {
     appId: "1:618525799175:web:9ac5765ebb6cccd339cba2"
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+// Initialize Auth with IndexedDB persistence to survive iOS standalone WebKit reloads
+let authInstance;
+try {
+    authInstance = initializeAuth(app, {
+        persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver
+    });
+} catch (e) {
+    authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 export const db = getFirestore(app);
-export const auth = getAuth(app);
 export const storage = getStorage(app);
 
 export const googleProvider = new GoogleAuthProvider();
