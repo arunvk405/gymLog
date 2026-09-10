@@ -57,6 +57,17 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab, activeWorkoutDay]);
 
+  // Lock body background scroll when full-screen workout is active to eliminate double scrollbars
+  useEffect(() => {
+    if (activeWorkoutDay !== null && !isWorkoutMinimized) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [activeWorkoutDay, isWorkoutMinimized]);
+
   // Load data when user changes
   useEffect(() => {
     if (user) {
@@ -325,6 +336,11 @@ function App() {
     <div className="app-container">
       <Toaster
         position="top-center"
+        containerStyle={{
+          top: 'calc(16px + env(safe-area-inset-top, 0px))',
+          left: 'calc(16px + env(safe-area-inset-left, 0px))',
+          right: 'calc(16px + env(safe-area-inset-right, 0px))',
+        }}
         toastOptions={{
           style: {
             background: 'var(--panel-color)',
@@ -342,7 +358,7 @@ function App() {
           }
         }}
       />
-      <main>
+      <main style={{ display: (activeWorkoutDay !== null && !isWorkoutMinimized) ? 'none' : 'block' }}>
         {renderContent()}
       </main>
 
@@ -379,11 +395,20 @@ function App() {
       {/* Active Workout Footer when minimized */}
       {isWorkoutMinimized && activeWorkoutDay !== null && activeTemplate.days[activeWorkoutDay] && (
         <div className="fade-in" onClick={() => setIsWorkoutMinimized(false)} style={{
-          position: 'fixed', bottom: '85px', left: '1rem', right: '1rem',
-          background: 'var(--panel-color)', border: '1px solid var(--accent-color)',
-          padding: '0.8rem 1.2rem', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', zIndex: 1000, borderRadius: '16px',
-          boxShadow: '0 8px 16px rgba(0,0,0,0.2)', cursor: 'pointer'
+          position: 'fixed',
+          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+          left: 'calc(1rem + env(safe-area-inset-left, 0px))',
+          right: 'calc(1rem + env(safe-area-inset-right, 0px))',
+          background: 'var(--panel-color)',
+          border: '1px solid var(--accent-color)',
+          padding: '0.8rem 1.2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          zIndex: 1000,
+          borderRadius: '16px',
+          boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+          cursor: 'pointer'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{activeTemplate.days[activeWorkoutDay].name}</div>

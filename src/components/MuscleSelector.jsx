@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MUSCLE_HIERARCHY, ALL_MUSCLE_GROUPS, getMuscleRegions } from '../data/muscles';
+import { MUSCLE_HIERARCHY, ALL_MUSCLE_GROUPS, getMuscleRegions, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
 import { Check, ChevronRight, Layers, Target } from 'lucide-react';
 
 /**
@@ -57,6 +57,7 @@ const MuscleSelector = ({
                     {ALL_MUSCLE_GROUPS.map((group) => {
                         const isActive = activeGroup === group;
                         const hasSelectedRegionsInGroup = getMuscleRegions(group).some(r => selectedRegions.includes(r));
+                        const commonName = MUSCLE_GROUP_INFO[group]?.commonName || group;
 
                         return (
                             <button
@@ -79,7 +80,7 @@ const MuscleSelector = ({
                                     transition: 'all 0.15s ease'
                                 }}
                             >
-                                {group}
+                                {commonName}
                                 {hasSelectedRegionsInGroup && !isActive && (
                                     <span style={{
                                         width: '6px', height: '6px', borderRadius: '50%',
@@ -98,7 +99,7 @@ const MuscleSelector = ({
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px'
                 }}>
-                    <span>2. SELECT SPECIFIC REGION / HEAD ({activeGroup})</span>
+                    <span>2. SELECT SPECIFIC HEAD / REGION ({MUSCLE_GROUP_INFO[activeGroup]?.commonName || activeGroup})</span>
                     <span style={{ color: 'var(--accent-color)' }}>
                         {selectedRegions.filter(r => availableRegions.includes(r)).length} selected
                     </span>
@@ -142,7 +143,7 @@ const MuscleSelector = ({
                                         border: '1px solid var(--border-color)'
                                     }}></div>
                                 )}
-                                <span>{region}</span>
+                                <span>{getRegionDisplayName(region)}</span>
                             </button>
                         );
                     })}

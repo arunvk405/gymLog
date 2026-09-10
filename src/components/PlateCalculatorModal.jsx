@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Minus, Check } from 'lucide-react';
 
 const PLATE_DENOMINATIONS = [25, 20, 15, 10, 5, 2.5, 1.25];
@@ -14,6 +14,14 @@ const PLATE_STYLES = {
 };
 
 const PlateCalculatorModal = ({ initialWeight, onSave, onClose }) => {
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
     const [targetWeight, setTargetWeight] = useState(parseFloat(initialWeight) || 20);
     const [barWeight, setBarWeight] = useState(20); // Default 20kg standard bar
 
@@ -63,7 +71,7 @@ const PlateCalculatorModal = ({ initialWeight, onSave, onClose }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))',
             animation: 'fade-in 0.2s ease-out'
         }}>
             <div style={{

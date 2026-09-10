@@ -10,7 +10,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineEleme
 import { Bar, Line } from 'react-chartjs-2';
 import ExerciseAnalytics from './ExerciseAnalytics';
 import AnatomyViewer from './AnatomyViewer';
-import { normalizeExerciseMuscles } from '../data/muscles';
+import { normalizeExerciseMuscles, ALL_MUSCLE_GROUPS, getRegionDisplayName } from '../data/muscles';
 
 // Defensive date formatter helper
 const safeFormat = (date, formatStr, fallback = 'N/A') => {
@@ -33,37 +33,62 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
     ChartJS.defaults.color = textColor;
     ChartJS.defaults.font.family = "'Inter', -apple-system, sans-serif";
 
+    const CLEAN_GROUP_NAMES = {
+        'Chest': 'Chest',
+        'Back': 'Back',
+        'Shoulders': 'Shoulders',
+        'Quadriceps': 'Quads',
+        'Hamstrings': 'Hamstrings',
+        'Glutes': 'Glutes',
+        'Calves': 'Calves',
+        'Biceps': 'Biceps',
+        'Triceps': 'Triceps',
+        'Forearms': 'Forearms',
+        'Abdominals': 'Abs & Core'
+    };
+
     // TRAINING INSIGHTS LOGIC
     const trainingInsights = useMemo(() => {
         if (!profile) return null;
 
         // Defensively process history
-        const safeHistory = Array.isArray(history) ? history.filter(s => s && s.date && Array.isArray(s.exercises)) : [];
+        const safeHistory = Array.isArray(history) ? history.filter(s => s && (s.date || s.timestamp) && Array.isArray(s.exercises)) : [];
 
+        const now = Date.now();
         const last30Days = safeHistory.filter(s => {
             try {
-                const date = new Date(s.date);
-                const today = new Date();
-                return (today - date) / (1000 * 60 * 60 * 24) <= 30;
+                let sessionTime = s.timestamp;
+                if (!sessionTime && s.date) {
+                    const parsed = new Date(s.date).getTime();
+                    if (!isNaN(parsed)) sessionTime = parsed;
+                }
+                if (!sessionTime) return false;
+                return (now - sessionTime) / (1000 * 60 * 60 * 24) <= 30;
             } catch (e) { return false; }
         });
 
+        // Initialize all 11 muscle groups with 0 volume
         const muscleVolumes = {};
+        ALL_MUSCLE_GROUPS.forEach(grp => {
+            muscleVolumes[grp] = 0;
+        });
         const regionVolumes = {};
 
         last30Days.forEach(s => {
-            s.exercises.forEach(ex => {
+            (s.exercises || []).forEach(ex => {
                 if (!ex || !ex.sets) return;
                 const vol = calculateVolume(ex.sets);
                 const norm = normalizeExerciseMuscles(ex);
                 
-                muscleVolumes[norm.primaryGroup] = (muscleVolumes[norm.primaryGroup] || 0) + vol;
+                if (norm.primaryGroup) {
+                    muscleVolumes[norm.primaryGroup] = (muscleVolumes[norm.primaryGroup] || 0) + vol;
+                }
                 
-                norm.primaryRegions.forEach(r => {
+                (norm.primaryRegions || []).forEach(r => {
                     regionVolumes[r] = (regionVolumes[r] || 0) + vol;
                 });
                 
-                norm.secondaryRegions.forEach(r => {
+                (norm.secondaryRegions || []).forEach(r => {
                     regionVolumes[r] = (regionVolumes[r] || 0) + (vol * 0.4); // Synergist volume weight
                 });
             });
@@ -74,9 +99,9 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
         const topSecondaryRegions = sortedRegions.slice(5, 10).map(item => item[0]);
 
         // Safe BMR calculation
-        const weight = profile.bodyweight || 70;
-        const height = profile.height || 170;
-        const age = profile.age || 25;
+        const weight = parseFloat(profile.bodyweight) || 70;
+        const height = parseFloat(profile.height) || 170;
+        const age = parseInt(profile.age) || 25;
         let bmr = profile.gender === 'male'
             ? 10 * weight + 6.25 * height - 5 * age + 5
             : 10 * weight + 6.25 * height - 5 * age - 161;
@@ -84,14 +109,25 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
         const tdee = Math.round(bmr * 1.5);
         const bulkTarget = tdee + 300;
 
-        const sortedMuscles = Object.entries(muscleVolumes).sort((a, b) => b[1] - a[1]); // Descending for focus
-        const focusArea = sortedMuscles.length > 0 ? sortedMuscles[sortedMuscles.length - 1][0] : 'None';
+        // Find lagging muscle group (lowest volume among all 11 major groups)
+        const sortedMuscles = Object.entries(muscleVolumes).sort((a, b) => a[1] - b[1]); // Ascending: lowest volume first
+        const lowestGroup = sortedMuscles.length > 0 ? sortedMuscles[0][0] : 'None';
+        const focusArea = CLEAN_GROUP_NAMES[lowestGroup] || lowestGroup;
 
         const totalVolume = Object.values(muscleVolumes).reduce((sum, vol) => sum + vol, 0);
         const muscleMaturity = Math.min(100, Math.round((totalVolume / (weight * 100)) * 10)) || 0;
 
         // Weight & Muscle Calculations
-        const validWeightHistory = (weightHistory || []).filter(w => w && typeof w.weight === 'number' && w.weight > 0);
+        const validWeightHistory = (weightHistory || [])
+            .map(w => ({
+                ...w,
+                weight: parseFloat(w.weight) || 0,
+                bodyfat: parseFloat(w.bodyfat) || 0,
+                timestamp: w.timestamp || (w.date ? new Date(w.date).getTime() : 0)
+            }))
+            .filter(w => w.weight > 0)
+            .sort((a, b) => a.timestamp - b.timestamp);
+
         const initialWeight = validWeightHistory.length > 0 ? validWeightHistory[0] : null;
         const currentWeight = validWeightHistory.length > 0 ? validWeightHistory[validWeightHistory.length - 1] : null;
 
@@ -126,9 +162,14 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
 
     const getWeightChartData = () => {
         try {
-            if (!weightHistory || weightHistory.length === 0) return { labels: [], datasets: [] };
-            const labels = weightHistory.map(w => safeFormat(w.timestamp, 'MMM d'));
-            const data = weightHistory.map(w => parseFloat(w.weight) || 0);
+            const sorted = [...(weightHistory || [])]
+                .map(w => ({ ...w, weight: parseFloat(w.weight) || 0, timestamp: w.timestamp || (w.date ? new Date(w.date).getTime() : 0) }))
+                .filter(w => w.weight > 0)
+                .sort((a, b) => a.timestamp - b.timestamp);
+
+            if (sorted.length === 0) return { labels: [], datasets: [] };
+            const labels = sorted.map(w => safeFormat(w.timestamp, 'MMM d'));
+            const data = sorted.map(w => w.weight);
 
             return {
                 labels,
@@ -150,8 +191,9 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
 
     const getMuscleChartData = () => {
         try {
-            const labels = Object.keys(trainingInsights?.muscleVolumes || {});
-            const data = Object.values(trainingInsights?.muscleVolumes || {});
+            const rawVolumes = trainingInsights?.muscleVolumes || {};
+            const labels = ALL_MUSCLE_GROUPS.map(g => CLEAN_GROUP_NAMES[g] || g);
+            const data = ALL_MUSCLE_GROUPS.map(g => Math.round(rawVolumes[g] || 0));
 
             return {
                 labels,
@@ -173,8 +215,20 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
             const start = startOfMonth(new Date());
             const end = endOfMonth(new Date());
             const days = eachDayOfInterval({ start, end });
-            const workoutDays = (history || []).filter(s => s && s.date).map(s => new Date(s.date));
-            return days.map(d => ({ date: d, day: format(d, 'd'), isToday: isSameDay(d, new Date()), active: workoutDays.some(wd => isSameDay(wd, d)) }));
+            const workoutDays = (history || [])
+                .map(s => {
+                    if (s?.timestamp) return new Date(s.timestamp);
+                    if (s?.date) return new Date(s.date);
+                    return null;
+                })
+                .filter(Boolean);
+
+            return days.map(d => ({
+                date: d,
+                day: format(d, 'd'),
+                isToday: isSameDay(d, new Date()),
+                active: workoutDays.some(wd => isSameDay(wd, d))
+            }));
         } catch (e) {
             return [];
         }
@@ -411,6 +465,7 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                         <AnatomyViewer
                             primaryRegions={trainingInsights?.topPrimaryRegions || []}
                             secondaryRegions={trainingInsights?.topSecondaryRegions || []}
+                            title={trainingInsights?.topPrimaryRegions?.length > 0 ? `Top Volume Heads (30D): ${trainingInsights.topPrimaryRegions.map(getRegionDisplayName).join(', ')}` : 'Muscle Anatomy'}
                             height={280}
                         />
                     </div>

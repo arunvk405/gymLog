@@ -1,9 +1,17 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import Cropper from 'react-easy-crop'
 import { getCroppedImg } from '../utils/image'
 import { X, Check } from 'lucide-react'
 
 const ImageCropper = ({ image, onCropComplete, onCancel }) => {
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
     const [crop, setCrop] = useState({ x: 0, y: 0 })
     const [zoom, setZoom] = useState(1)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
@@ -42,7 +50,7 @@ const ImageCropper = ({ image, onCropComplete, onCancel }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '20px'
+            padding: 'calc(1.25rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1.25rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))'
         }}>
             <div className="panel fade-in" style={{
                 width: '100%',

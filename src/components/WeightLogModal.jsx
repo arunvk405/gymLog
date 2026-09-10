@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Scale, Percent, Check, Loader2 } from 'lucide-react';
 
 const WeightLogModal = ({ onSave, onCancel, currentWeight, currentBodyfat }) => {
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, []);
+
     const [weight, setWeight] = useState(currentWeight || '');
     const [loading, setLoading] = useState(false);
 
@@ -29,7 +37,7 @@ const WeightLogModal = ({ onSave, onCancel, currentWeight, currentBodyfat }) => 
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 2000,
-            padding: '1.5rem'
+            padding: 'calc(1.5rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1.5rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))'
         }}>
             <div className="panel fade-in" style={{ width: '100%', maxWidth: '400px', border: '1px solid var(--accent-color)' }}>
                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>

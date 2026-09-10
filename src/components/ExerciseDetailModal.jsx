@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Target, Dumbbell, Zap, Layers, CheckCircle2, ShieldAlert, Cpu, Activity, Award } from 'lucide-react';
 import AnatomyViewer from './AnatomyViewer';
-import { normalizeExerciseMuscles } from '../data/muscles';
+import { normalizeExerciseMuscles, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
 
 const getEquipmentName = (exercise) => {
     if (exercise.equipment) return exercise.equipment;
@@ -118,7 +118,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
             background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1.25rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1.25rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))',
             overflow: 'hidden'
         }} onClick={onClose}>
             <div style={{
@@ -127,7 +127,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                 borderRadius: '24px',
                 width: '100%',
                 maxWidth: '540px',
-                maxHeight: '92vh',
+                maxHeight: 'calc(94vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 overscrollBehavior: 'contain',
@@ -215,9 +215,17 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                         }}>
                             <Target size={14} /> PRIMARY MUSCLE TARGET
                         </div>
-                        <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '6px' }}>
-                            {primaryGroup}
+                        <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '2px' }}>
+                            {MUSCLE_GROUP_INFO[primaryGroup]?.commonName || primaryGroup}
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                                ({MUSCLE_GROUP_INFO[primaryGroup]?.formalName || primaryGroup})
+                            </span>
                         </div>
+                        {MUSCLE_GROUP_INFO[primaryGroup]?.shortDescription && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px', opacity: 0.85 }}>
+                                {MUSCLE_GROUP_INFO[primaryGroup].shortDescription}
+                            </div>
+                        )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {primaryRegions.map(region => (
                                 <span key={region} style={{
@@ -225,7 +233,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                                     fontSize: '0.75rem', fontWeight: 800,
                                     padding: '4px 10px', borderRadius: '8px'
                                 }}>
-                                    {region}
+                                    {getRegionDisplayName(region)}
                                 </span>
                             ))}
                         </div>
@@ -247,7 +255,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                                 <Zap size={14} /> SECONDARY MUSCLE TARGETS
                             </div>
                             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                                {secondaryGroups.join(', ') || 'Synergist Muscles'}
+                                {secondaryGroups.map(g => MUSCLE_GROUP_INFO[g]?.commonName || g).join(', ') || 'Synergist Muscles'}
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {secondaryRegions.map(region => (
@@ -256,7 +264,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                                         fontSize: '0.75rem', fontWeight: 800,
                                         padding: '4px 10px', borderRadius: '8px'
                                     }}>
-                                        {region}
+                                        {getRegionDisplayName(region)}
                                     </span>
                                 ))}
                             </div>

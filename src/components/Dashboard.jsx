@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TARGETS } from '../data/program';
 import { calculate1RM, getStrengthLevel } from '../utils/analytics';
-import { Dumbbell, Plus, ChevronDown, Trash2, Pencil, Flame, Trophy, Zap, TrendingUp, Quote, Activity, Award, ShieldCheck, HeartPulse, Clock } from 'lucide-react';
+import { Dumbbell, Plus, ChevronDown, Trash2, Pencil, Flame, Trophy, Zap, TrendingUp, Quote, Activity, Award, ShieldCheck, HeartPulse, Clock, Target } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { MOTIVATIONAL_QUOTES } from '../data/motivation';
-import { normalizeExerciseMuscles } from '../data/muscles';
+import { ALL_MUSCLE_GROUPS, MUSCLE_GROUP_INFO, normalizeExerciseMuscles } from '../data/muscles';
 
 const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates, onSelectTemplate, onCreateTemplate, onEditTemplate, onDeleteTemplate }) => {
     const [quote, setQuote] = useState('');
@@ -28,36 +28,162 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
         return Math.round(sum);
     }, [history]);
 
+    const focusAreaInfo = useMemo(() => {
+        const now = Date.now();
+        const safeHistory = Array.isArray(history) ? history.filter(s => s && (s.date || s.timestamp) && Array.isArray(s.exercises)) : [];
+        const last30Days = safeHistory.filter(s => {
+            try {
+                let sessionTime = s.timestamp;
+                if (!sessionTime && s.date) {
+                    const parsed = new Date(s.date).getTime();
+                    if (!isNaN(parsed)) sessionTime = parsed;
+                }
+                if (!sessionTime) return false;
+                return (now - sessionTime) / (1000 * 60 * 60 * 24) <= 30;
+            } catch (e) { return false; }
+        });
+
+        const muscleVolumes = {};
+        ALL_MUSCLE_GROUPS.forEach(grp => {
+            muscleVolumes[grp] = 0;
+        });
+
+        last30Days.forEach(s => {
+            (s.exercises || []).forEach(ex => {
+                if (!ex || !ex.sets) return;
+                const norm = normalizeExerciseMuscles(ex);
+                let vol = 0;
+                (ex.sets || []).forEach(set => {
+                    if (set.completed !== false) {
+                        vol += (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0);
+                    }
+                });
+                if (norm.primaryGroup) {
+                    muscleVolumes[norm.primaryGroup] = (muscleVolumes[norm.primaryGroup] || 0) + vol;
+                }
+            });
+        });
+
+        const CLEAN_NAMES = {
+            'Chest': 'Chest',
+            'Back': 'Back',
+            'Shoulders': 'Shoulders',
+            'Quadriceps': 'Quads',
+            'Hamstrings': 'Hamstrings',
+            'Glutes': 'Glutes',
+            'Calves': 'Calves',
+            'Biceps': 'Biceps',
+            'Triceps': 'Triceps',
+            'Forearms': 'Forearms',
+            'Abdominals': 'Abs & Core'
+        };
+
+        const sortedMuscles = Object.entries(muscleVolumes).sort((a, b) => a[1] - b[1]);
+        const lowestGroup = sortedMuscles.length > 0 ? sortedMuscles[0][0] : 'Full Body';
+        const focusName = CLEAN_NAMES[lowestGroup] || lowestGroup;
+        const lowestVol = sortedMuscles.length > 0 ? sortedMuscles[0][1] : 0;
+
+        return {
+            name: focusName,
+            volume: Math.round(lowestVol)
+        };
+    }, [history]);
+
     const muscleRecovery = useMemo(() => {
         const now = Date.now();
         const muscleLastTrained = {};
 
         (history || []).forEach(session => {
-            const sessionTime = new Date(session.date || session.id).getTime();
-            if (isNaN(sessionTime)) return;
+            let sessionTime = session.timestamp;
+            if (!sessionTime && session.date) {
+                const parsed = new Date(session.date).getTime();
+                if (!isNaN(parsed)) sessionTime = parsed;
+            }
+            if (!sessionTime && session.createdAt) {
+                const parsed = new Date(session.createdAt).getTime();
+                if (!isNaN(parsed)) sessionTime = parsed;
+            }
+            if (!sessionTime) return;
 
             (session.exercises || []).forEach(ex => {
                 const norm = normalizeExerciseMuscles(ex);
-                const group = norm.primaryGroup;
-                if (!muscleLastTrained[group] || sessionTime > muscleLastTrained[group]) {
-                    muscleLastTrained[group] = sessionTime;
+                // Only primary muscle groups undergo the full tear requiring 48h recovery
+                // Synergists do not reset the primary recovery timer
+                if (norm.primaryGroup) {
+                    if (!muscleLastTrained[norm.primaryGroup] || sessionTime > muscleLastTrained[norm.primaryGroup]) {
+                        muscleLastTrained[norm.primaryGroup] = sessionTime;
+                    }
                 }
             });
         });
 
-        const groups = ['Chest', 'Back', 'Shoulders', 'Quadriceps', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps', 'Abdominals'];
-        return groups.map(group => {
+        const CLEAN_NAMES = {
+            'Chest': 'Chest',
+            'Back': 'Back',
+            'Shoulders': 'Shoulders',
+            'Quadriceps': 'Quads',
+            'Hamstrings': 'Hamstrings',
+            'Glutes': 'Glutes',
+            'Calves': 'Calves',
+            'Biceps': 'Biceps',
+            'Triceps': 'Triceps',
+            'Forearms': 'Forearms',
+            'Abdominals': 'Abs & Core'
+        };
+
+        return ALL_MUSCLE_GROUPS.map(group => {
+            const displayName = CLEAN_NAMES[group] || group;
             const lastTime = muscleLastTrained[group];
             if (!lastTime) {
-                return { group, status: 'fresh', label: 'Fresh & Ready', hours: 999, color: '#34d399' };
+                return {
+                    group,
+                    commonName: displayName,
+                    status: 'fresh',
+                    label: 'Fresh & Ready',
+                    timeText: 'Ready',
+                    hours: 999,
+                    color: '#34d399'
+                };
             }
-            const hoursAgo = (now - lastTime) / (1000 * 60 * 60);
+
+            const hoursAgo = Math.max(0, (now - lastTime) / (1000 * 60 * 60));
+            const daysAgo = Math.floor(hoursAgo / 24);
+
+            let timeText = `${Math.round(hoursAgo)}h ago`;
+            if (daysAgo >= 1) {
+                timeText = `${daysAgo}d ago`;
+            }
+
             if (hoursAgo < 24) {
-                return { group, status: 'fatigued', label: 'Trained <24h ago', hours: Math.round(hoursAgo), color: '#ef4444' };
+                return {
+                    group,
+                    commonName: displayName,
+                    status: 'fatigued',
+                    label: 'Trained <24h ago',
+                    timeText,
+                    hours: Math.round(hoursAgo),
+                    color: '#ef4444'
+                };
             } else if (hoursAgo < 48) {
-                return { group, status: 'recovering', label: 'Recovering (24–48h)', hours: Math.round(hoursAgo), color: '#f59e0b' };
+                return {
+                    group,
+                    commonName: displayName,
+                    status: 'recovering',
+                    label: 'Recovering (24–48h)',
+                    timeText,
+                    hours: Math.round(hoursAgo),
+                    color: '#f59e0b'
+                };
             } else {
-                return { group, status: 'fresh', label: 'Fresh & Ready', hours: Math.round(hoursAgo), color: '#34d399' };
+                return {
+                    group,
+                    commonName: displayName,
+                    status: 'fresh',
+                    label: 'Fresh & Ready',
+                    timeText,
+                    hours: Math.round(hoursAgo),
+                    color: '#34d399'
+                };
             }
         });
     }, [history]);
@@ -114,52 +240,107 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                 </div>
             </div>
 
-            {/* LIFETIME TONNAGE & RECOVERY OVERVIEW */}
-            <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
+            {/* LIFETIME TONNAGE, RECOVERY & FOCUS AREA OVERVIEW */}
+            <div className="stats-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
                 <div className="panel" style={{ marginBottom: 0, background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Award size={14} color="var(--accent-color)" /> LIFETIME TONNAGE LIFTED
+                    <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Award size={14} color="var(--accent-color)" /> TONNAGE
                     </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-primary)' }}>
-                        {totalTonnage > 1000 ? `${(totalTonnage / 1000).toFixed(1)}k` : totalTonnage} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>KG</span>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                        {totalTonnage > 1000 ? `${(totalTonnage / 1000).toFixed(1)}k` : totalTonnage} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>KG</span>
                     </div>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-color)', marginTop: '4px' }}>
-                        🏋️‍♂️ {totalTonnage > 100000 ? 'Iron Titan Badge Unlocked' : 'Keep Lifting to Unlock Badges'}
+                    <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--accent-color)', marginTop: '4px' }}>
+                        🏋️‍♂️ {totalTonnage > 100000 ? 'Iron Titan' : 'Total Lifted'}
                     </div>
                 </div>
 
                 <div className="panel" style={{ marginBottom: 0, background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <HeartPulse size={14} color="#34d399" /> MUSCLE RECOVERY STATUS
+                    <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <HeartPulse size={14} color="#34d399" /> RECOVERY
                     </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#34d399' }}>
-                        {muscleRecovery.filter(m => m.status === 'fresh').length} / {muscleRecovery.length} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Fresh Groups</span>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#34d399' }}>
+                        {muscleRecovery.filter(m => m.status === 'fresh' || m.status === 'optimal').length} / {muscleRecovery.length} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ready</span>
                     </div>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Ready for optimal hypertrophy stimulus
+                    <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        48–72h Window
+                    </div>
+                </div>
+
+                <div className="panel" style={{ marginBottom: 0, background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Target size={14} color="#f59e0b" /> FOCUS AREA
+                    </div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--text-primary)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={focusAreaInfo.name}>
+                        {focusAreaInfo.name}
+                    </div>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                        🎯 Needs Volume
                     </div>
                 </div>
             </div>
 
-            {/* MUSCLE RECOVERY HEATMAP MINI GRID */}
+            {/* MUSCLE RECOVERY HEATMAP COMPREHENSIVE GRID */}
             <div className="panel" style={{ marginBottom: '1.5rem', background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Clock size={14} color="var(--accent-color)" /> MUSCLE RECOVERY HEATMAP
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={15} color="var(--accent-color)" /> MUSCLE RECOVERY HEATMAP
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '0.65rem', fontWeight: 800 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }}></span> &lt;24h
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></span> 24–48h
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#34d399' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399' }}></span> Ready
+                        </span>
+                    </div>
                 </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '8px' }}>
                     {muscleRecovery.map(m => (
                         <div
                             key={m.group}
+                            title={`${m.commonName} (${m.timeText}): ${m.label}`}
                             style={{
                                 background: `${m.color}15`,
                                 border: `1px solid ${m.color}40`,
                                 borderRadius: '12px',
-                                padding: '8px',
-                                textAlign: 'center'
+                                padding: '10px 6px',
+                                textAlign: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                minWidth: 0,
+                                boxSizing: 'border-box',
+                                transition: 'all 0.2s ease'
                             }}
                         >
-                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>{m.group}</div>
-                            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: m.color, marginTop: '2px' }}>{m.label}</div>
+                            <div style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                color: 'var(--text-primary)',
+                                width: '100%',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>
+                                {m.commonName}
+                            </div>
+                            <div style={{
+                                fontSize: '0.62rem',
+                                fontWeight: 800,
+                                color: m.color,
+                                marginTop: '3px',
+                                width: '100%',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>
+                                {m.label}
+                            </div>
                         </div>
                     ))}
                 </div>

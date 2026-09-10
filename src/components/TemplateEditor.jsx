@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical, Target, Activity, Zap, BicepsFlexed, Shield, Sword, Info, Pencil } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { DEFAULT_TEMPLATE } from '../data/program';
-import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles } from '../data/muscles';
+import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
 import ExerciseDetailModal from './ExerciseDetailModal';
 import CreateExerciseModal from './CreateExerciseModal';
 import AnatomyViewer from './AnatomyViewer';
@@ -244,7 +244,7 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
                                             fontSize: '0.65rem', fontWeight: 800, color: '#0f172a',
                                             background: '#38bdf8', padding: '2px 6px', borderRadius: '6px'
                                         }}>
-                                            Primary: {norm.primaryRegions.join(', ')}
+                                            Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
                                         </span>
 
                                         {/* Secondary Muscle Badge */}
@@ -254,7 +254,7 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
                                                 background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
                                                 padding: '2px 6px', borderRadius: '6px'
                                             }}>
-                                                Sec: {norm.secondaryRegions.join(', ')}
+                                                Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
                                             </span>
                                         )}
                                     </div>
@@ -671,11 +671,11 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel, onSaveExercise
                                                                             <div>
                                                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                                                                                     <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                                        Primary: {norm.primaryRegions.join(', ')}
+                                                                                        Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
                                                                                     </span>
                                                                                     {norm.secondaryRegions.length > 0 && (
                                                                                         <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                                            Sec: {norm.secondaryRegions.join(', ')}
+                                                                                            Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
                                                                                         </span>
                                                                                     )}
                                                                                     <button

@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 import { fetchHistory as getWorkouts, deleteWorkout, updateWorkout } from '../utils/storage';
 import CustomDatePicker from './CustomDatePicker';
 import ExerciseDetailModal from './ExerciseDetailModal';
-import { normalizeExerciseMuscles } from '../data/muscles';
+import { normalizeExerciseMuscles, getRegionDisplayName } from '../data/muscles';
 
 const getWorkoutIcon = (name = "") => {
     const n = name.toLowerCase();
@@ -426,11 +426,11 @@ const History = ({ history, onUpdate }) => {
                                                             </div>
                                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginLeft: '26px' }}>
                                                                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                    Primary: {norm.primaryRegions.join(', ')}
+                                                                    Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
                                                                 </span>
                                                                 {norm.secondaryRegions.length > 0 && (
                                                                     <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                        Sec: {norm.secondaryRegions.join(', ')}
+                                                                        Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
                                                                     </span>
                                                                 )}
                                                             </div>

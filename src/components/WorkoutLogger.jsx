@@ -11,7 +11,7 @@ import PlateCalculatorModal from './PlateCalculatorModal';
 import ExerciseDetailModal from './ExerciseDetailModal';
 import CreateExerciseModal from './CreateExerciseModal';
 import AnatomyViewer from './AnatomyViewer';
-import { normalizeExerciseMuscles } from '../data/muscles';
+import { normalizeExerciseMuscles, getRegionDisplayName } from '../data/muscles';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
@@ -439,7 +439,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
 
     return (
         <>
-            <div className="fade-in" style={{ paddingBottom: '8rem' }}>
+            <div className="fade-in" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}>
                 {/* STICKY HEADER */}
                 <div style={{
                     position: 'sticky', top: 0, zIndex: 50,
@@ -606,11 +606,11 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                                     <div>
                                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                                                                             <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                                Primary: {norm.primaryRegions.join(', ')}
+                                                                                Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
                                                                             </span>
                                                                             {norm.secondaryRegions.length > 0 && (
                                                                                 <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                                    Sec: {norm.secondaryRegions.join(', ')}
+                                                                                    Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
                                                                                 </span>
                                                                             )}
                                                                             <button
@@ -914,7 +914,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                     </button>
                 </div>
 
-                <div style={{ position: 'fixed', bottom: '1.5rem', left: '1rem', right: '1rem', maxWidth: '800px', margin: '0 auto', zIndex: 1001 }}>
+                <div style={{ position: 'fixed', bottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))', left: '1rem', right: '1rem', maxWidth: '800px', margin: '0 auto', zIndex: 1001 }}>
                     <button
                         disabled={isSaving}
                         style={{
@@ -949,9 +949,39 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
                         background: 'var(--bg-color)', zIndex: 3000, display: 'flex', flexDirection: 'column'
                     }}>
-                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                            <button onClick={() => setShowExerciseModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)' }}>
-                                <X size={24} />
+                        <div style={{
+                            paddingTop: 'calc(0.85rem + env(safe-area-inset-top, 0px))',
+                            paddingBottom: '0.85rem',
+                            paddingLeft: 'calc(1rem + env(safe-area-inset-left, 0px))',
+                            paddingRight: 'calc(1rem + env(safe-area-inset-right, 0px))',
+                            borderBottom: '1px solid var(--border-color)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.8rem',
+                            background: 'var(--bg-color)',
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 10
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => setShowExerciseModal(false)}
+                                style={{
+                                    background: 'var(--muted-color)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-primary)',
+                                    cursor: 'pointer',
+                                    padding: '8px',
+                                    borderRadius: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minWidth: '40px',
+                                    minHeight: '40px'
+                                }}
+                                aria-label="Close"
+                            >
+                                <X size={20} />
                             </button>
                             <input
                                 type="text"
@@ -959,21 +989,45 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 autoFocus
-                                style={{ flex: 1, padding: '0.8rem', borderRadius: '12px', background: 'var(--panel-color)' }}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.8rem 1rem',
+                                    borderRadius: '12px',
+                                    background: 'var(--panel-color)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '16px'
+                                }}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowCreateCustomModal(true)}
                                 style={{
-                                    padding: '8px 12px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
-                                    background: 'var(--accent-color)', color: 'white', border: 'none',
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                                    padding: '9px 14px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 800,
+                                    background: 'var(--accent-color)',
+                                    color: 'white',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    whiteSpace: 'nowrap',
+                                    minHeight: '40px',
+                                    boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)'
                                 }}
                             >
-                                <Plus size={14} /> Custom
+                                <Plus size={16} /> CUSTOM
                             </button>
                         </div>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+                        <div style={{
+                            flex: 1,
+                            overflowY: 'auto',
+                            WebkitOverflowScrolling: 'touch',
+                            padding: '1rem calc(1rem + env(safe-area-inset-right, 0px)) calc(3rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))'
+                        }}>
                             {(exerciseDb || []).filter(ex => {
                                 const norm = normalizeExerciseMuscles(ex);
                                 const q = searchQuery.toLowerCase();
@@ -997,11 +1051,11 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                             <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{ex.name}</div>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
                                                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
-                                                    Primary: {norm.primaryRegions.join(', ')}
+                                                    Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
                                                 </span>
                                                 {norm.secondaryRegions.length > 0 && (
                                                     <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', padding: '2px 6px', borderRadius: '6px' }}>
-                                                        Sec: {norm.secondaryRegions.join(', ')}
+                                                        Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
                                                     </span>
                                                 )}
                                             </div>

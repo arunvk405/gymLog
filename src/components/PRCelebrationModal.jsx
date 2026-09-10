@@ -23,7 +23,7 @@ const PRCelebrationModal = ({ prData, onClose }) => {
             background: 'rgba(0, 0, 0, 0.88)', backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1.5rem',
+            padding: 'calc(1.5rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1.5rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))',
             overflow: 'hidden'
         }} onClick={onClose}>
             <div

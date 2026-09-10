@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MUSCLE_HIERARCHY, getGroupForRegion } from '../data/muscles';
+import { MUSCLE_HIERARCHY, getGroupForRegion, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
 
 /**
  * Interactive SVG Human Muscle Anatomy Visualization
@@ -13,7 +13,8 @@ const AnatomyViewer = ({
     interactive = false,
     viewMode: initialViewMode = 'both', // 'front', 'back', 'both'
     height = 360,
-    className = ""
+    className = "",
+    title = null
 }) => {
     const [hoveredRegion, setHoveredRegion] = useState(null);
     const [activeTab, setActiveTab] = useState(initialViewMode);
@@ -69,6 +70,9 @@ const AnatomyViewer = ({
         const primary = isPrimary(regionName);
         const secondary = isSecondary(regionName);
         const isHovered = hoveredRegion === regionName;
+        const parentGroup = getGroupForRegion(regionName);
+        const commonGroup = MUSCLE_GROUP_INFO[parentGroup]?.commonName || parentGroup;
+        const fullDisplay = `${getRegionDisplayName(regionName)} • ${commonGroup}`;
 
         return (
             <path
@@ -87,7 +91,7 @@ const AnatomyViewer = ({
                 onClick={() => handleClick(regionName)}
                 {...extraProps}
             >
-                <title>{regionName} ({getGroupForRegion(regionName)})</title>
+                <title>{fullDisplay}</title>
             </path>
         );
     };
@@ -133,16 +137,16 @@ const AnatomyViewer = ({
 
             {/* Hovered / Active Region Tooltip */}
             <div style={{
-                height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: '8px', fontSize: '0.75rem', fontWeight: 800
+                minHeight: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: '8px', fontSize: '0.75rem', fontWeight: 800, textAlign: 'center', padding: '0 8px'
             }}>
                 {hoveredRegion ? (
-                    <span style={{ color: 'var(--accent-color)', background: 'var(--muted-color)', padding: '2px 10px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                        {hoveredRegion} ({getGroupForRegion(hoveredRegion)})
+                    <span style={{ color: 'var(--accent-color)', background: 'var(--muted-color)', padding: '3px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        {getRegionDisplayName(hoveredRegion)} <span style={{ color: 'var(--text-secondary)', opacity: 0.8 }}>({MUSCLE_GROUP_INFO[getGroupForRegion(hoveredRegion)]?.commonName || getGroupForRegion(hoveredRegion)})</span>
                     </span>
                 ) : (
-                    <span style={{ color: 'var(--text-secondary)', opacity: 0.6, fontSize: '0.7rem' }}>
-                        {interactive ? 'Tap muscle region to select' : (primaryRegions.length > 0 ? `Target: ${primaryRegions.join(', ')}` : 'Muscle Anatomy')}
+                    <span style={{ color: 'var(--text-secondary)', opacity: 0.75, fontSize: '0.7rem' }}>
+                        {title || (interactive ? 'Tap muscle region to select' : (primaryRegions.length > 0 ? `Target: ${primaryRegions.map(getRegionDisplayName).join(', ')}` : 'Muscle Anatomy'))}
                     </span>
                 )}
             </div>

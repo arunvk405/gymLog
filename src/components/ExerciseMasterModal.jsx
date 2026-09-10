@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Plus, Pencil, Trash2, Eye, EyeOff, RotateCcw, Info, Dumbbell, Shield, Target, Activity, Zap, BicepsFlexed, Sword, Lock, AlertTriangle, UserCheck, Filter, Cpu, SlidersHorizontal } from 'lucide-react';
-import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles } from '../data/muscles';
+import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
 import CreateExerciseModal from './CreateExerciseModal';
 import ExerciseDetailModal from './ExerciseDetailModal';
 import AnatomyViewer from './AnatomyViewer';
@@ -139,7 +139,10 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
             {/* Header Bar */}
             <div style={{
                 background: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)',
-                padding: '1.25rem 1rem 1rem 1rem'
+                paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
+                paddingBottom: '0.85rem',
+                paddingLeft: 'calc(1rem + env(safe-area-inset-left, 0px))',
+                paddingRight: 'calc(1rem + env(safe-area-inset-right, 0px))'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -466,7 +469,7 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
                                                 fontSize: '0.65rem', fontWeight: 800, color: '#0f172a',
                                                 background: '#38bdf8', padding: '2px 8px', borderRadius: '6px'
                                             }}>
-                                                Primary: {norm.primaryRegions.join(', ')}
+                                                Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
                                             </span>
 
                                             {/* Secondary Muscle Badge */}
@@ -476,7 +479,7 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
                                                     background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
                                                     padding: '2px 8px', borderRadius: '6px'
                                                 }}>
-                                                    Sec: {norm.secondaryRegions.join(', ')}
+                                                    Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
                                                 </span>
                                             )}
 
