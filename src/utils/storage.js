@@ -103,15 +103,36 @@ export const fetchHistory = async (uid) => {
     }
 };
 
-export const saveProfile = async (profile, uid) => {
-    if (!uid) return;
+export const saveProfile = async (param1, param2) => {
+    let profile, uid;
+    if (typeof param1 === 'string') {
+        uid = param1;
+        profile = param2;
+    } else if (typeof param2 === 'string') {
+        profile = param1;
+        uid = param2;
+    } else if (param1?.uid) {
+        uid = param1.uid;
+        profile = param1;
+    } else if (param2?.uid) {
+        uid = param2.uid;
+        profile = param1;
+    }
+
+    if (!uid || !profile || typeof profile !== 'object') {
+        console.warn("saveProfile: Missing uid or valid profile object", { param1, param2 });
+        return;
+    }
+
     try {
+        const cleanProfile = sanitizeForFirestore(profile);
         await setDoc(doc(db, 'profiles', uid), {
-            ...profile,
+            ...cleanProfile,
             updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
     } catch (e) {
         console.error("Profile Save Error:", e);
+        throw e;
     }
 };
 

@@ -6,11 +6,13 @@ export const createImage = (url) =>
         const image = new Image()
         image.addEventListener('load', () => resolve(image))
         image.addEventListener('error', (error) => reject(error))
-        image.setAttribute('crossOrigin', 'anonymous') // needed to avoid cross-origin issues on CodeSandbox
+        image.setAttribute('crossOrigin', 'anonymous') // needed to avoid cross-origin issues
         image.src = url
     })
 
-export async function getCroppedImg(imageSrc, pixelCrop) {
+export async function getCroppedImg(imageSrc, pixelCrop, maxDimension = 400) {
+    if (!imageSrc) return null
+
     const image = await createImage(imageSrc)
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
@@ -19,23 +21,44 @@ export async function getCroppedImg(imageSrc, pixelCrop) {
         return null
     }
 
+    const targetCrop = pixelCrop && pixelCrop.width && pixelCrop.height ? pixelCrop : {
+        x: 0,
+        y: 0,
+        width: image.naturalWidth || image.width || 300,
+        height: image.naturalHeight || image.height || 300
+    }
+
+    // Determine output dimensions (scale down large crops to avoid huge base64 strings)
+    let outputWidth = targetCrop.width
+    let outputHeight = targetCrop.height
+
+    if (outputWidth > maxDimension || outputHeight > maxDimension) {
+        const scale = Math.min(maxDimension / outputWidth, maxDimension / outputHeight)
+        outputWidth = Math.max(1, Math.round(outputWidth * scale))
+        outputHeight = Math.max(1, Math.round(outputHeight * scale))
+    }
+
     // set canvas size to match the target crop
-    canvas.width = pixelCrop.width
-    canvas.height = pixelCrop.height
+    canvas.width = outputWidth
+    canvas.height = outputHeight
+
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
 
     // draw expected image area to canvas
     ctx.drawImage(
         image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
+        targetCrop.x,
+        targetCrop.y,
+        targetCrop.width,
+        targetCrop.height,
         0,
         0,
-        pixelCrop.width,
-        pixelCrop.height
+        outputWidth,
+        outputHeight
     )
 
-    // As Base64 string
-    return canvas.toDataURL('image/jpeg', 0.8)
+    // As Base64 string (optimized JPEG ~20-40KB)
+    return canvas.toDataURL('image/jpeg', 0.85)
 }
+

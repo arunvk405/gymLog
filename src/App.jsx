@@ -87,7 +87,16 @@ function App() {
           setHistory(h || []);
           setProfile(p);
           setWeightHistory(wh || []);
-          setTemplates([DEFAULT_TEMPLATE, ...(t || [])]);
+
+          // Deduplicate templates by ID, allowing user's custom default to override if saved
+          const templateMap = new Map();
+          templateMap.set(DEFAULT_TEMPLATE.id, DEFAULT_TEMPLATE);
+          (t || []).forEach(tmpl => {
+            if (tmpl && tmpl.id) {
+              templateMap.set(tmpl.id, tmpl);
+            }
+          });
+          setTemplates(Array.from(templateMap.values()));
 
           // Check for Monday Weight Log
           const today = new Date();

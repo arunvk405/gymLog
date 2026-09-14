@@ -89,7 +89,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
     const handleSave = async () => {
         try {
             setProfile(tempProfile);
-            await saveProfile(user.uid, tempProfile);
+            await saveProfile(tempProfile, user?.uid);
             setEditing(false);
             toast.success("Profile saved!");
         } catch (e) {
@@ -106,6 +106,8 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
             };
             reader.readAsDataURL(file);
         }
+        // Clear input value so selecting the same file again triggers onChange
+        e.target.value = '';
     };
 
     const handleCropComplete = async (croppedImageBase64) => {
@@ -116,7 +118,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
             const updated = { ...profile, photoURL: croppedImageBase64 };
             setProfile(updated);
             setTempProfile(updated);
-            await saveProfile(user.uid, updated);
+            await saveProfile(updated, user?.uid);
             toast.success("Profile photo updated!");
         } catch (e) {
             console.error("Photo save error:", e);
@@ -186,6 +188,7 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
         <div className="fade-in" style={{ paddingBottom: '3rem' }}>
             {imageToCrop && (
                 <ImageCropper
+                    image={imageToCrop}
                     imageSrc={imageToCrop}
                     onCropComplete={handleCropComplete}
                     onCancel={() => setImageToCrop(null)}

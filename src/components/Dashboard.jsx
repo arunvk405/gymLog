@@ -500,8 +500,8 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                                         fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer'
                                     }}
                                 >
-                                    {templates.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    {templates.map((t, idx) => (
+                                        <option key={t.id ? `${t.id}-${idx}` : `tmpl-${idx}`} value={t.id}>{t.name}</option>
                                     ))}
                                 </select>
                                 <ChevronDown size={14} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-secondary)' }} />

@@ -1,68 +1,78 @@
 import React, { useState, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Cropper from 'react-easy-crop'
 import { getCroppedImg } from '../utils/image'
 import { X, Check } from 'lucide-react'
 
-const ImageCropper = ({ image, onCropComplete, onCancel }) => {
+const ImageCropper = ({ image, imageSrc, onCropComplete, onCancel }) => {
+    const src = image || imageSrc
+
     useEffect(() => {
-        const originalOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+        const originalOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
         return () => {
-            document.body.style.overflow = originalOverflow;
-        };
-    }, []);
+            document.body.style.overflow = originalOverflow
+        }
+    }, [])
 
     const [crop, setCrop] = useState({ x: 0, y: 0 })
     const [zoom, setZoom] = useState(1)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
 
-    const onCropChange = useCallback((crop) => {
-        setCrop(crop)
+    const onCropChange = useCallback((newCrop) => {
+        setCrop(newCrop)
     }, [])
 
-    const onZoomChange = useCallback((zoom) => {
-        setZoom(zoom)
+    const onZoomChange = useCallback((newZoom) => {
+        setZoom(newZoom)
     }, [])
 
-    const onCropCompleteInternal = useCallback((_croppedArea, croppedAreaPixels) => {
-        setCroppedAreaPixels(croppedAreaPixels)
+    const onCropCompleteInternal = useCallback((_croppedArea, pixels) => {
+        setCroppedAreaPixels(pixels)
     }, [])
 
     const handleDone = async () => {
+        if (!src) return
         try {
-            const croppedImage = await getCroppedImg(image, croppedAreaPixels)
-            onCropComplete(croppedImage)
+            const croppedImage = await getCroppedImg(src, croppedAreaPixels)
+            if (croppedImage) {
+                onCropComplete(croppedImage)
+            }
         } catch (e) {
-            console.error(e)
+            console.error("Cropping failed:", e)
         }
     }
 
-    return (
+    if (typeof document === 'undefined') return null
+
+    return createPortal(
         <div style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            inset: 0,
             backgroundColor: 'rgba(0,0,0,0.85)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 2000,
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 'calc(1.25rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1.25rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))'
+            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) calc(1rem + env(safe-area-inset-right, 0px)) calc(1rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))',
+            overflowY: 'auto'
         }}>
-            <div className="panel fade-in" style={{
+            <div className="panel" style={{
                 width: '100%',
-                maxWidth: '450px',
-                background: 'var(--panel-color)',
-                padding: '1.5rem',
+                maxWidth: '440px',
+                background: 'var(--panel-color, #1e293b)',
+                borderRadius: '24px',
+                padding: '1.25rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1.2rem',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                margin: 0
+                gap: '1rem',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+                border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
+                margin: 'auto',
+                color: 'var(--text-primary, #ffffff)',
+                maxHeight: '92vh'
             }}>
                 <div style={{
                     display: 'flex',
@@ -71,12 +81,13 @@ const ImageCropper = ({ image, onCropComplete, onCancel }) => {
                 }}>
                     <div>
                         <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Adjust Photo</h3>
-                        <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Fit your photo inside the circle</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary, #94a3b8)' }}>Fit your photo inside the circle</p>
                     </div>
                     <button
+                        type="button"
                         className="secondary"
                         onClick={onCancel}
-                        style={{ padding: '8px', borderRadius: '12px', minWidth: '40px', height: '40px' }}
+                        style={{ padding: '8px', borderRadius: '12px', minWidth: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         <X size={20} />
                     </button>
@@ -85,45 +96,54 @@ const ImageCropper = ({ image, onCropComplete, onCancel }) => {
                 <div style={{
                     position: 'relative',
                     width: '100%',
-                    aspectRatio: '1',
-                    background: '#000',
+                    height: '280px',
+                    maxHeight: '42vh',
+                    minHeight: '200px',
+                    background: '#090d16',
                     borderRadius: '16px',
                     overflow: 'hidden',
-                    border: '1px solid var(--border-color)'
+                    border: '1px solid var(--border-color, rgba(255,255,255,0.1))'
                 }}>
-                    <Cropper
-                        image={image}
-                        crop={crop}
-                        zoom={zoom}
-                        aspect={1}
-                        cropShape="round"
-                        showGrid={false}
-                        onCropChange={onCropChange}
-                        onCropComplete={onCropCompleteInternal}
-                        onZoomChange={onZoomChange}
-                    />
+                    {src ? (
+                        <Cropper
+                            image={src}
+                            crop={crop}
+                            zoom={zoom}
+                            aspect={1}
+                            cropShape="round"
+                            showGrid={false}
+                            onCropChange={onCropChange}
+                            onCropComplete={onCropCompleteInternal}
+                            onZoomChange={onZoomChange}
+                        />
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                            No image selected
+                        </div>
+                    )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.5px' }}>ZOOM</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary, #94a3b8)', fontWeight: 800, letterSpacing: '0.5px' }}>ZOOM</span>
                         <input
                             type="range"
                             value={zoom}
                             min={1}
                             max={3}
-                            step={0.1}
+                            step={0.05}
                             aria-labelledby="Zoom"
-                            onChange={(e) => setZoom(e.target.value)}
+                            onChange={(e) => setZoom(Number(e.target.value))}
                             style={{
                                 flex: 1,
-                                accentColor: 'var(--accent-color)',
+                                accentColor: 'var(--accent-color, #38bdf8)',
                                 cursor: 'pointer'
                             }}
                         />
                     </div>
 
                     <button
+                        type="button"
                         onClick={handleDone}
                         style={{
                             width: '100%',
@@ -131,16 +151,25 @@ const ImageCropper = ({ image, onCropComplete, onCancel }) => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '8px',
-                            padding: '1rem',
-                            fontSize: '0.95rem'
+                            padding: '0.9rem',
+                            fontSize: '0.95rem',
+                            fontWeight: 800,
+                            borderRadius: '14px',
+                            background: 'var(--accent-color, #38bdf8)',
+                            color: '#ffffff',
+                            border: 'none',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 14px rgba(56, 189, 248, 0.35)'
                         }}
                     >
                         <Check size={20} /> APPLY CHANGES
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 
 export default ImageCropper
+
