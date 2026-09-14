@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { calculate1RM } from '../utils/analytics';
+import { calculate1RM, isCardioExercise, getCardioMET } from '../utils/analytics';
 import { format } from 'date-fns';
 import { Line } from 'react-chartjs-2';
-import { Trophy, TrendingUp, Calendar, Dumbbell, Star, Percent } from 'lucide-react';
+import { Trophy, TrendingUp, Calendar, Dumbbell, Star, Percent, Timer, Flame, Activity } from 'lucide-react';
 
 const ExerciseAnalytics = ({ history, theme }) => {
     const isDark = theme === 'dark';
@@ -29,7 +29,11 @@ const ExerciseAnalytics = ({ history, theme }) => {
         return exerciseNames.length > 0 ? exerciseNames[0] : '';
     });
 
-    const [metric, setMetric] = useState('oneRM'); // 'oneRM' or 'maxWeight'
+    const isCardio = useMemo(() => {
+        return isCardioExercise({ name: selectedExercise });
+    }, [selectedExercise]);
+
+    const [metric, setMetric] = useState('oneRM'); // 'oneRM' | 'maxWeight' | 'duration'
 
     // Set initial selected exercise once the list is available
     React.useEffect(() => {
@@ -66,7 +70,7 @@ const ExerciseAnalytics = ({ history, theme }) => {
         return logs.sort((a, b) => a.date - b.date);
     }, [history, selectedExercise]);
 
-    // 3. Calculate statistics: PR, Max 1RM, Total Sets
+    // 3. Calculate statistics: PR, Max 1RM, Total Sets / Cardio stats
     const stats = useMemo(() => {
         if (exerciseLogs.length === 0) return null;
 
@@ -78,12 +82,21 @@ const ExerciseAnalytics = ({ history, theme }) => {
         let allTimeMax1RMDate = null;
 
         let totalSets = 0;
+        let totalCardioMinutes = 0;
+        let maxSessionMinutes = 0;
+        let maxSessionDate = null;
+
+        const met = getCardioMET(selectedExercise);
 
         exerciseLogs.forEach(log => {
+            let sessionMinutes = 0;
             log.sets.forEach(set => {
                 const weight = parseFloat(set.weight) || 0;
                 const reps = parseInt(set.reps) || 0;
                 totalSets++;
+
+                const setDuration = (reps > 0 && reps <= 180) ? reps : (weight > 0 && weight <= 180 ? weight : 15);
+                sessionMinutes += setDuration;
 
                 // Max Weight Lifted PR
                 if (weight > allTimePRWeight || (weight === allTimePRWeight && reps > allTimePRReps)) {
@@ -99,7 +112,15 @@ const ExerciseAnalytics = ({ history, theme }) => {
                     allTimeMax1RMDate = log.date;
                 }
             });
+
+            totalCardioMinutes += sessionMinutes;
+            if (sessionMinutes > maxSessionMinutes) {
+                maxSessionMinutes = sessionMinutes;
+                maxSessionDate = log.date;
+            }
         });
+
+        const estCalories = Math.round((met * 3.5 * 75 / 200) * totalCardioMinutes);
 
         return {
             prWeight: allTimePRWeight,
@@ -108,9 +129,13 @@ const ExerciseAnalytics = ({ history, theme }) => {
             max1RM: Math.round(allTimeMax1RM * 10) / 10,
             max1RMDate: allTimeMax1RMDate,
             totalSets,
-            avgSetsPerWorkout: (totalSets / exerciseLogs.length).toFixed(1)
+            avgSetsPerWorkout: (totalSets / exerciseLogs.length).toFixed(1),
+            totalCardioMinutes,
+            maxSessionMinutes,
+            maxSessionDate,
+            estCalories
         };
-    }, [exerciseLogs]);
+    }, [exerciseLogs, selectedExercise]);
 
     // 4. Generate Chart.js Data
     const chartData = useMemo(() => {
@@ -125,6 +150,17 @@ const ExerciseAnalytics = ({ history, theme }) => {
         });
 
         const dataPoints = exerciseLogs.map(log => {
+            if (isCardio) {
+                // Return total session duration for this cardio session
+                let sessionMins = 0;
+                log.sets.forEach(s => {
+                    const reps = parseInt(s.reps) || 0;
+                    const wt = parseFloat(s.weight) || 0;
+                    sessionMins += (reps > 0 && reps <= 180) ? reps : (wt > 0 && wt <= 180 ? wt : 15);
+                });
+                return sessionMins;
+            }
+
             if (metric === 'oneRM') {
                 // Return maximum calculated 1RM for this workout session
                 const oneRMs = log.sets.map(s => calculate1RM(parseFloat(s.weight) || 0, parseInt(s.reps) || 0));
@@ -136,10 +172,17 @@ const ExerciseAnalytics = ({ history, theme }) => {
             }
         });
 
+        let chartLabel = 'Max Weight (kg)';
+        if (isCardio) {
+            chartLabel = 'Duration (min)';
+        } else if (metric === 'oneRM') {
+            chartLabel = 'Est. 1RM (kg)';
+        }
+
         return {
             labels,
             datasets: [{
-                label: metric === 'oneRM' ? 'Est. 1RM (kg)' : 'Max Weight (kg)',
+                label: chartLabel,
                 data: dataPoints,
                 borderColor: '#38bdf8',
                 backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -149,7 +192,7 @@ const ExerciseAnalytics = ({ history, theme }) => {
                 pointBackgroundColor: '#38bdf8'
             }]
         };
-    }, [exerciseLogs, metric]);
+    }, [exerciseLogs, metric, isCardio]);
 
     const chartOptions = {
         responsive: true,
@@ -220,38 +263,77 @@ const ExerciseAnalytics = ({ history, theme }) => {
             {/* Quick Cards Grid */}
             {stats && (
                 <div className="stats-grid" style={{ marginBottom: '1rem', gap: '0.75rem' }}>
-                    <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
-                        <Trophy size={18} color="var(--accent-color)" style={{ marginBottom: '4px' }} />
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ALL-TIME PR</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
-                            {stats.prWeight} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>KG</small>
-                        </div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            for {stats.prReps} rep{stats.prReps !== 1 ? 's' : ''}
-                        </div>
-                    </div>
+                    {isCardio ? (
+                        <>
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
+                                <Timer size={18} color="var(--accent-color)" style={{ marginBottom: '4px' }} />
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>MAX SESSION</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
+                                    {stats.maxSessionMinutes} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>MIN</small>
+                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    {stats.maxSessionDate ? format(stats.maxSessionDate, 'dd MMM yyyy') : 'Personal Record'}
+                                </div>
+                            </div>
 
-                    <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
-                        <Star size={18} color="#eab308" style={{ marginBottom: '4px' }} />
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>EST. MAX 1RM</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
-                            {stats.max1RM} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>KG</small>
-                        </div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            {stats.max1RMDate ? format(stats.max1RMDate, 'dd MMM yyyy') : 'N/A'}
-                        </div>
-                    </div>
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
+                                <Flame size={18} color="#f59e0b" style={{ marginBottom: '4px' }} />
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>EST. CALORIES</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f59e0b', margin: '2px 0' }}>
+                                    {stats.estCalories} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>KCAL</small>
+                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    Across {stats.totalCardioMinutes} min total
+                                </div>
+                            </div>
 
-                    <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
-                        <TrendingUp size={18} color="var(--success-color)" style={{ marginBottom: '4px' }} />
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOGGED SESSIONS</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
-                            {exerciseLogs.length} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>times</small>
-                        </div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            {stats.totalSets} total sets
-                        </div>
-                    </div>
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
+                                <Activity size={18} color="var(--success-color)" style={{ marginBottom: '4px' }} />
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOGGED SESSIONS</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
+                                    {exerciseLogs.length} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>times</small>
+                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    {stats.totalSets} total intervals
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
+                                <Trophy size={18} color="var(--accent-color)" style={{ marginBottom: '4px' }} />
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ALL-TIME PR</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
+                                    {stats.prWeight} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>KG</small>
+                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    for {stats.prReps} rep{stats.prReps !== 1 ? 's' : ''}
+                                </div>
+                            </div>
+
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
+                                <Star size={18} color="#eab308" style={{ marginBottom: '4px' }} />
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>EST. MAX 1RM</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
+                                    {stats.max1RM} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>KG</small>
+                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    {stats.max1RMDate ? format(stats.max1RMDate, 'dd MMM yyyy') : 'N/A'}
+                                </div>
+                            </div>
+
+                            <div className="stat-box" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '110px' }}>
+                                <TrendingUp size={18} color="var(--success-color)" style={{ marginBottom: '4px' }} />
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOGGED SESSIONS</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', margin: '2px 0' }}>
+                                    {exerciseLogs.length} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>times</small>
+                                </div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    {stats.totalSets} total sets
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
@@ -261,44 +343,48 @@ const ExerciseAnalytics = ({ history, theme }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <TrendingUp size={16} color="var(--accent-color)" />
-                            <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Progress Graph</h3>
+                            <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {isCardio ? 'Duration Trend (min)' : 'Progress Graph'}
+                            </h3>
                         </div>
 
                         {/* Metric Toggle */}
-                        <div style={{ display: 'flex', background: 'var(--muted-color)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                            <button
-                                onClick={() => setMetric('oneRM')}
-                                style={{
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    background: metric === 'oneRM' ? 'var(--panel-color)' : 'transparent',
-                                    color: 'var(--text-primary)',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    border: 'none',
-                                    boxShadow: 'none',
-                                    textTransform: 'uppercase'
-                                }}
-                            >
-                                1RM
-                            </button>
-                            <button
-                                onClick={() => setMetric('maxWeight')}
-                                style={{
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    background: metric === 'maxWeight' ? 'var(--panel-color)' : 'transparent',
-                                    color: 'var(--text-primary)',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    border: 'none',
-                                    boxShadow: 'none',
-                                    textTransform: 'uppercase'
-                                }}
-                            >
-                                Max Wt
-                            </button>
-                        </div>
+                        {!isCardio && (
+                            <div style={{ display: 'flex', background: 'var(--muted-color)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <button
+                                    onClick={() => setMetric('oneRM')}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        background: metric === 'oneRM' ? 'var(--panel-color)' : 'transparent',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        border: 'none',
+                                        boxShadow: 'none',
+                                        textTransform: 'uppercase'
+                                    }}
+                                >
+                                    1RM
+                                </button>
+                                <button
+                                    onClick={() => setMetric('maxWeight')}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        background: metric === 'maxWeight' ? 'var(--panel-color)' : 'transparent',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 800,
+                                        border: 'none',
+                                        boxShadow: 'none',
+                                        textTransform: 'uppercase'
+                                    }}
+                                >
+                                    Max Wt
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ height: '220px', width: '100%', position: 'relative' }}>

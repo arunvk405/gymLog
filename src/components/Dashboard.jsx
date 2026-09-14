@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TARGETS } from '../data/program';
-import { calculate1RM, getStrengthLevel } from '../utils/analytics';
-import { Dumbbell, Plus, ChevronDown, Trash2, Pencil, Flame, Trophy, Zap, TrendingUp, Quote, Activity, Award, ShieldCheck, HeartPulse, Clock, Target } from 'lucide-react';
+import { calculate1RM, getStrengthLevel, calculateCardioMetrics } from '../utils/analytics';
+import { Dumbbell, Plus, ChevronDown, Trash2, Pencil, Flame, Trophy, Zap, TrendingUp, Quote, Activity, Award, ShieldCheck, HeartPulse, Clock, Target, Timer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { MOTIVATIONAL_QUOTES } from '../data/motivation';
 import { ALL_MUSCLE_GROUPS, MUSCLE_GROUP_INFO, normalizeExerciseMuscles } from '../data/muscles';
@@ -27,6 +27,10 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
         });
         return Math.round(sum);
     }, [history]);
+
+    const cardioInfo = useMemo(() => {
+        return calculateCardioMetrics(history, profile?.bodyweight || 75, 30);
+    }, [history, profile]);
 
     const focusAreaInfo = useMemo(() => {
         const now = Date.now();
@@ -240,7 +244,7 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                 </div>
             </div>
 
-            {/* LIFETIME TONNAGE, RECOVERY & FOCUS AREA OVERVIEW */}
+            {/* LIFETIME TONNAGE, RECOVERY, CARDIO & FOCUS AREA OVERVIEW */}
             <div className="stats-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
                 <div className="panel" style={{ marginBottom: 0, background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -263,6 +267,18 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                     </div>
                     <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-secondary)', marginTop: '4px' }}>
                         48–72h Window
+                    </div>
+                </div>
+
+                <div className="panel" style={{ marginBottom: 0, background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Timer size={14} color="#38bdf8" /> CARDIO (30D)
+                    </div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#38bdf8' }}>
+                        {cardioInfo.totalMinutes} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>MIN</span>
+                    </div>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 800, color: cardioInfo.totalCalories > 0 ? '#f59e0b' : 'var(--text-secondary)', marginTop: '4px' }}>
+                        🔥 {cardioInfo.totalCalories > 0 ? `${cardioInfo.totalCalories} kcal` : '0 kcal burn'}
                     </div>
                 </div>
 
@@ -342,6 +358,76 @@ const Dashboard = ({ history, profile, onStartWorkout, activeTemplate, templates
                                 {m.label}
                             </div>
                         </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* CARDIO & CONDITIONING HUB */}
+            <div className="panel" style={{ marginBottom: '1.5rem', background: 'var(--panel-color)', border: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Timer size={16} color="#38bdf8" /> CARDIO & STAMINA HUB
+                    </div>
+                    <span style={{
+                        fontSize: '0.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: '8px',
+                        background: `${cardioInfo.staminaColor}15`, color: cardioInfo.staminaColor, border: `1px solid ${cardioInfo.staminaColor}40`
+                    }}>
+                        {cardioInfo.staminaTier}
+                    </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '0.85rem' }}>
+                    <div style={{ background: 'var(--bg-color)', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Cardio (30D)</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '2px' }}>
+                            {cardioInfo.totalMinutes} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>min</span>
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {cardioInfo.totalSessions} sessions logged
+                        </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-color)', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Est. Calorie Burn</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f59e0b', marginTop: '2px' }}>
+                            {cardioInfo.totalCalories} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>kcal</span>
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            Based on {profile?.bodyweight || 75}kg bodyweight
+                        </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-color)', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Weekly Average</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#34d399', marginTop: '2px' }}>
+                            {cardioInfo.weeklyAverageMinutes} <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>min/wk</span>
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            Target: 150 min/wk aerobic
+                        </div>
+                    </div>
+                </div>
+
+                {/* Modality Breakdown Pills */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginRight: '4px' }}>Modality:</span>
+                    {Object.entries(cardioInfo.modalityMinutes).map(([modality, mins]) => (
+                        <span
+                            key={modality}
+                            style={{
+                                fontSize: '0.65rem', fontWeight: 700, padding: '3px 8px', borderRadius: '8px',
+                                background: mins > 0 ? 'rgba(56, 189, 248, 0.1)' : 'var(--muted-color)',
+                                border: mins > 0 ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid var(--border-color)',
+                                color: mins > 0 ? '#38bdf8' : 'var(--text-secondary)'
+                            }}
+                        >
+                            {modality === 'Treadmill & Running' && '🏃 '}
+                            {modality === 'Cycling & Bike' && '🚴 '}
+                            {modality === 'StairMaster' && '🧗 '}
+                            {modality === 'Rowing Machine' && '🚣 '}
+                            {modality === 'Other Cardio' && '⚡ '}
+                            {modality}: {mins}m
+                        </span>
                     ))}
                 </div>
             </div>

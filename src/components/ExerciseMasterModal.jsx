@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, X, Plus, Pencil, Trash2, Eye, EyeOff, RotateCcw, Info, Dumbbell, Shield, Target, Activity, Zap, BicepsFlexed, Sword, Lock, AlertTriangle, UserCheck, Filter, Cpu, SlidersHorizontal } from 'lucide-react';
+import { Search, X, Plus, Pencil, Trash2, Eye, EyeOff, RotateCcw, Info, Dumbbell, Shield, Target, Activity, Zap, BicepsFlexed, Sword, Lock, AlertTriangle, UserCheck, Filter, Cpu, SlidersHorizontal, Flame } from 'lucide-react';
 import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
+import { EXERCISE_DATABASE } from '../data/exercises';
+import { isCardioExercise } from '../utils/analytics';
 import CreateExerciseModal from './CreateExerciseModal';
 import ExerciseDetailModal from './ExerciseDetailModal';
 import AnatomyViewer from './AnatomyViewer';
@@ -9,8 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { canEditExercise, ADMIN_EMAIL } from '../utils/storage';
 import { toast } from 'react-hot-toast';
 
-const EQUIPMENT_OPTIONS = ['All', 'Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Kettlebell'];
-const MECHANICS_OPTIONS = ['All', 'Compound', 'Isolation'];
+const EQUIPMENT_OPTIONS = ['All', 'Barbell', 'Dumbbell', 'Cable', 'Machine', 'Bodyweight', 'Kettlebell', 'Cardio'];
+const MECHANICS_OPTIONS = ['All', 'Compound', 'Isolation', 'Cardio'];
 
 const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onResetExercises, onClose }) => {
     const { user } = useAuth();
@@ -29,7 +31,7 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
     const [exerciseToDelete, setExerciseToDelete] = useState(null);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-    const groups = useMemo(() => ['All', ...ALL_MUSCLE_GROUPS], []);
+    const groups = useMemo(() => ['All', 'Cardio', ...ALL_MUSCLE_GROUPS], []);
 
     // Prevent background page body scrolling while ExerciseMasterModal is active
     useEffect(() => {
@@ -40,8 +42,22 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
         };
     }, []);
 
+    const activeDb = useMemo(() => {
+        const map = new Map();
+        EXERCISE_DATABASE.forEach(e => {
+            if (e && e.id) map.set(String(e.id), e);
+        });
+        (exerciseDb || []).forEach(e => {
+            if (e && e.id) {
+                const existing = map.get(String(e.id)) || {};
+                map.set(String(e.id), { ...existing, ...e });
+            }
+        });
+        return Array.from(map.values());
+    }, [exerciseDb]);
+
     const filteredExercises = useMemo(() => {
-        let list = exerciseDb || [];
+        let list = activeDb;
 
         // 1. Status Filter
         if (statusFilter === 'active') {
@@ -50,12 +66,16 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
             list = list.filter(e => e.hidden);
         }
 
-        // 2. Muscle Group Filter
+        // 2. Muscle Group / Cardio Filter
         if (filterGroup !== 'All') {
-            list = list.filter(e => {
-                const norm = normalizeExerciseMuscles(e);
-                return norm.primaryGroup === filterGroup || norm.secondaryGroups.includes(filterGroup);
-            });
+            if (filterGroup === 'Cardio') {
+                list = list.filter(e => isCardioExercise(e));
+            } else {
+                list = list.filter(e => {
+                    const norm = normalizeExerciseMuscles(e);
+                    return norm.primaryGroup === filterGroup || norm.secondaryGroups.includes(filterGroup);
+                });
+            }
         }
 
         // 3. Equipment Filter
@@ -64,33 +84,43 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
             list = list.filter(e => {
                 const name = (e.name || '').toLowerCase();
                 const equip = (e.equipment || '').toLowerCase();
+                const type = (e.type || '').toLowerCase();
+                if (eq === 'cardio') return isCardioExercise(e) || equip.includes('cardio') || type === 'cardio';
                 return equip.includes(eq) || name.includes(eq);
             });
         }
 
         // 4. Mechanics Filter
         if (mechanicsFilter !== 'All') {
-            const isComp = mechanicsFilter === 'Compound';
+            const mech = mechanicsFilter.toLowerCase();
             list = list.filter(e => {
                 const type = (e.type || 'accessory').toLowerCase();
-                return isComp ? type === 'compound' : type !== 'compound';
+                if (mech === 'cardio') return isCardioExercise(e) || type === 'cardio';
+                if (mech === 'compound') return type === 'compound';
+                return type !== 'compound' && type !== 'cardio';
             });
         }
 
         // 5. Search Query
         if (search.trim()) {
-            const q = search.toLowerCase();
+            const q = search.toLowerCase().trim();
             list = list.filter(e => {
                 const norm = normalizeExerciseMuscles(e);
-                return e.name.toLowerCase().includes(q) ||
-                    norm.primaryGroup.toLowerCase().includes(q) ||
-                    norm.primaryRegions.some(r => r.toLowerCase().includes(q)) ||
-                    norm.secondaryRegions.some(r => r.toLowerCase().includes(q));
+                const nameMatch = (e.name || '').toLowerCase().includes(q);
+                const equipMatch = (e.equipment || '').toLowerCase().includes(q);
+                const typeMatch = (e.type || '').toLowerCase().includes(q);
+                const groupMatch = (norm.primaryGroup || '').toLowerCase().includes(q);
+                const primaryRegionMatch = (norm.primaryRegions || []).some(r => r.toLowerCase().includes(q));
+                const secondaryRegionMatch = (norm.secondaryRegions || []).some(r => r.toLowerCase().includes(q));
+                const isCardio = isCardioExercise(e);
+                const cardioSearchMatch = (q.includes('cardio') || q.includes('endurance') || q.includes('aerobic') || q.includes('tread') || q.includes('run') || q.includes('cycle') || q.includes('bike') || q.includes('stair') || q.includes('row')) && isCardio;
+
+                return nameMatch || equipMatch || typeMatch || groupMatch || primaryRegionMatch || secondaryRegionMatch || cardioSearchMatch;
             });
         }
 
         return list;
-    }, [exerciseDb, search, filterGroup, statusFilter, equipmentFilter, mechanicsFilter]);
+    }, [activeDb, search, filterGroup, statusFilter, equipmentFilter, mechanicsFilter]);
 
     const handleToggleHide = (exercise) => {
         const updated = {
@@ -488,7 +518,10 @@ const ExerciseMasterModal = ({ exerciseDb, onSaveExercise, onDeleteExercise, onR
                                                 fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)',
                                                 background: 'var(--muted-color)', padding: '2px 8px', borderRadius: '6px'
                                             }}>
-                                                {ex.defaultSets || 3} sets × {ex.defaultReps || 10} reps @ {ex.defaultWeight || 0}kg (+{ex.progression || 2.5}kg)
+                                                {isCardioExercise(ex)
+                                                    ? `${ex.defaultSets || 1} int × ${ex.defaultReps || 20} mins @ Lvl ${ex.defaultWeight || 0} (+${ex.progression || 5}m)`
+                                                    : `${ex.defaultSets || 3} sets × ${ex.defaultReps || 10} reps @ ${ex.defaultWeight || 0}kg (+${ex.progression || 2.5}kg)`
+                                                }
                                             </span>
                                         </div>
                                     </div>

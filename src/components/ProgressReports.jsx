@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { calculate1RM, calculateVolume } from '../utils/analytics';
+import { calculate1RM, calculateVolume, calculateCardioMetrics } from '../utils/analytics';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
-import { Activity, Zap, Flame, Target, Award, History, TrendingUp, Layers } from 'lucide-react';
+import { Activity, Zap, Flame, Target, Award, History, TrendingUp, Layers, Pencil, Trash2, Timer, HeartPulse } from 'lucide-react';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler
 } from 'chart.js';
@@ -24,7 +24,7 @@ const safeFormat = (date, formatStr, fallback = 'N/A') => {
     }
 };
 
-const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWeight }) => {
+const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWeight, onEditWeight, onDeleteWeight }) => {
     const isDark = theme === 'dark';
     const textColor = isDark ? '#94a3b8' : '#475569';
     const gridColor = isDark ? '#334155' : '#e2e8f0';
@@ -140,6 +140,9 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
 
         const weightDelta = (currentWeight && initialWeight) ? (currentWeight.weight - initialWeight.weight).toFixed(1) : "0.0";
 
+        // Compute Cardio Metrics
+        const cardio = calculateCardioMetrics(history, weight, 30);
+
         return {
             tdee,
             bulkTarget,
@@ -156,7 +159,8 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
             initialLBM: initialWeight && initialWeight.bodyfat > 0 ? (initialWeight.weight * (1 - initialWeight.bodyfat / 100)).toFixed(1) : null,
             currentLBM: currentWeight && currentWeight.bodyfat > 0 ? (currentWeight.weight * (1 - currentWeight.bodyfat / 100)).toFixed(1) : null,
             weightDelta,
-            totalLogs: validWeightHistory.length
+            totalLogs: validWeightHistory.length,
+            cardio
         };
     }, [history, profile, weightHistory]);
 
@@ -210,6 +214,27 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
         }
     };
 
+    const getCardioChartData = () => {
+        try {
+            const rawModality = trainingInsights?.cardio?.modalityMinutes || {};
+            const labels = Object.keys(rawModality);
+            const data = Object.values(rawModality);
+
+            return {
+                labels,
+                datasets: [{
+                    label: 'Minutes',
+                    data,
+                    backgroundColor: isDark ? '#38bdf8' : '#0284c7',
+                    borderRadius: 8,
+                    hoverBackgroundColor: isDark ? '#0ea5e9' : '#0369a1'
+                }]
+            };
+        } catch (e) {
+            return { labels: [], datasets: [] };
+        }
+    };
+
     const calendarData = useMemo(() => {
         try {
             const start = startOfMonth(new Date());
@@ -234,13 +259,7 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
         }
     }, [history]);
 
-    if (!profile) return (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading your insights...
-        </div>
-    );
-
-    const chartOptions = {
+    const chartOptions = useMemo(() => ({
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -267,10 +286,10 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                 ticks: { color: textColor, font: { size: 10, weight: 'bold' } }
             }
         }
-    };
+    }), [isDark, gridColor, textColor]);
 
     const weightChartOptions = useMemo(() => {
-        const weights = (weightHistory || []).map(w => w.weight).filter(w => w > 0);
+        const weights = (weightHistory || []).map(w => parseFloat(w.weight) || 0).filter(w => w > 0);
         const minW = weights.length > 0 ? Math.min(...weights) : 0;
         const maxW = weights.length > 0 ? Math.max(...weights) : 100;
         
@@ -286,6 +305,12 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
             }
         };
     }, [chartOptions, weightHistory]);
+
+    if (!profile) return (
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading your insights...
+        </div>
+    );
 
     try {
         return (
@@ -394,9 +419,24 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
 
                 {/* WEIGHT HISTORY TABLE */}
                 <div className="panel" style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.2rem' }}>
-                        <History size={20} color="var(--text-secondary)" />
-                        <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Weight History</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <History size={20} color="var(--text-secondary)" />
+                            <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Weight History</h3>
+                        </div>
+                        <button
+                            onClick={onLogWeight}
+                            style={{
+                                padding: '4px 12px',
+                                fontSize: '0.7rem',
+                                height: 'auto',
+                                background: 'rgba(56, 189, 248, 0.1)',
+                                color: '#38bdf8',
+                                border: '1px solid rgba(56, 189, 248, 0.2)'
+                            }}
+                        >
+                            + LOG
+                        </button>
                     </div>
 
                     {(weightHistory || []).length > 0 ? (
@@ -409,20 +449,70 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                                         {(weightHistory || []).some(w => w.bodyfat > 0) && (
                                             <th style={{ textAlign: 'right', padding: '8px 0', fontWeight: 800 }}>FAT %</th>
                                         )}
+                                        <th style={{ textAlign: 'right', padding: '8px 0', fontWeight: 800 }}>ACTIONS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {[...(weightHistory || [])].reverse().map((entry, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', opacity: 0.9 }}>
-                                            <td style={{ padding: '12px 0' }}>{safeFormat(entry.timestamp, 'MMM d, yyyy')}</td>
-                                            <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 700 }}>{entry.weight} kg</td>
-                                            {(weightHistory || []).some(w => w.bodyfat > 0) && (entry.bodyfat > 0 ? (
-                                                <td style={{ padding: '12px 0', textAlign: 'right' }}>{entry.bodyfat}%</td>
-                                            ) : (
-                                                <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--text-secondary)' }}>-</td>
-                                            ))}
-                                        </tr>
-                                    ))}
+                                    {[...(weightHistory || [])].reverse().map((entry, idx) => {
+                                        const entryDate = entry.timestamp || (entry.date ? new Date(entry.date).getTime() : null);
+                                        return (
+                                            <tr key={entry.id || idx} style={{ borderBottom: '1px solid var(--border-color)', opacity: 0.9 }}>
+                                                <td style={{ padding: '12px 0' }}>{safeFormat(entryDate, 'MMM d, yyyy')}</td>
+                                                <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 700 }}>{entry.weight} kg</td>
+                                                {(weightHistory || []).some(w => w.bodyfat > 0) && (entry.bodyfat > 0 ? (
+                                                    <td style={{ padding: '12px 0', textAlign: 'right' }}>{entry.bodyfat}%</td>
+                                                ) : (
+                                                    <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--text-secondary)' }}>-</td>
+                                                ))}
+                                                <td style={{ padding: '12px 0', textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                        <button
+                                                            onClick={() => onEditWeight && onEditWeight(entry)}
+                                                            className="icon-btn"
+                                                            style={{
+                                                                background: 'rgba(56, 189, 248, 0.1)',
+                                                                border: '1px solid rgba(56, 189, 248, 0.2)',
+                                                                borderRadius: '8px',
+                                                                padding: '6px',
+                                                                color: '#38bdf8',
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center'
+                                                            }}
+                                                            title="Edit weight log"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        {onDeleteWeight && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (window.confirm(`Delete weight log of ${entry.weight} kg on ${safeFormat(entryDate, 'MMM d, yyyy')}?`)) {
+                                                                        onDeleteWeight(entry.id);
+                                                                    }
+                                                                }}
+                                                                className="icon-btn"
+                                                                style={{
+                                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                                    borderRadius: '8px',
+                                                                    padding: '6px',
+                                                                    color: 'var(--error-color)',
+                                                                    cursor: 'pointer',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center'
+                                                                }}
+                                                                title="Delete weight log"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -469,6 +559,106 @@ const ProgressReports = ({ history, profile, theme, weightHistory = [], onLogWei
                             height={280}
                         />
                     </div>
+                </div>
+
+                {/* CARDIO & AEROBIC CONDITIONING INSIGHTS */}
+                <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Timer size={20} color="#38bdf8" />
+                            <h3 style={{ margin: 0, fontSize: '0.95rem', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Cardio & Aerobic Stamina</h3>
+                        </div>
+                        <span style={{
+                            fontSize: '0.7rem', fontWeight: 800, padding: '4px 10px', borderRadius: '8px',
+                            background: `${trainingInsights?.cardio?.staminaColor}15`, color: trainingInsights?.cardio?.staminaColor, border: `1px solid ${trainingInsights?.cardio?.staminaColor}40`
+                        }}>
+                            {trainingInsights?.cardio?.staminaTier}
+                        </span>
+                    </div>
+
+                    {/* Stat Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '1.2rem' }}>
+                        <div style={{ background: 'var(--bg-color)', padding: '12px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Cardio (30D)</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '2px' }}>
+                                {trainingInsights?.cardio?.totalMinutes || 0} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>min</small>
+                            </div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                {trainingInsights?.cardio?.totalSessions || 0} Sessions
+                            </div>
+                        </div>
+
+                        <div style={{ background: 'var(--bg-color)', padding: '12px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Active Calories</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b', marginTop: '2px' }}>
+                                {trainingInsights?.cardio?.totalCalories || 0} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>kcal</small>
+                            </div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                MET-calibrated burn
+                            </div>
+                        </div>
+
+                        <div style={{ background: 'var(--bg-color)', padding: '12px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Weekly Average</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#34d399', marginTop: '2px' }}>
+                                {trainingInsights?.cardio?.weeklyAverageMinutes || 0} <small style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>m/wk</small>
+                            </div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                Target: 150 min/wk
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Weekly Aerobic Target Progress Bar */}
+                    <div style={{ marginBottom: '1.2rem', padding: '12px', background: 'var(--bg-color)', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', fontWeight: 800, marginBottom: '6px' }}>
+                            <span style={{ color: 'var(--text-primary)' }}>AHA Aerobic Target: 150 min/wk</span>
+                            <span style={{ color: trainingInsights?.cardio?.staminaColor }}>{trainingInsights?.cardio?.staminaScore || 0}% Complete</span>
+                        </div>
+                        <div style={{ width: '100%', height: '10px', background: 'var(--muted-color)', borderRadius: '5px', overflow: 'hidden' }}>
+                            <div style={{ width: `${trainingInsights?.cardio?.staminaScore || 0}%`, height: '100%', background: 'linear-gradient(90deg, #38bdf8, #34d399)', transition: 'width 1s ease' }}></div>
+                        </div>
+                    </div>
+
+                    {/* Modality Breakdown Bar Chart */}
+                    <div style={{ height: '200px', marginBottom: '1.2rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                            Modality Breakdown (Minutes)
+                        </div>
+                        <div style={{ height: '170px' }}>
+                            <Bar data={getCardioChartData()} options={chartOptions} />
+                        </div>
+                    </div>
+
+                    {/* Recent Cardio Activity Logs */}
+                    {(trainingInsights?.cardio?.recentActivities || []).length > 0 && (
+                        <div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                                Recent Cardio Logs
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {trainingInsights.cardio.recentActivities.slice(0, 5).map((act, idx) => (
+                                    <div
+                                        key={idx}
+                                        style={{
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            padding: '8px 12px', background: 'var(--bg-color)', borderRadius: '10px',
+                                            border: '1px solid var(--border-color)', fontSize: '0.8rem'
+                                        }}
+                                    >
+                                        <div>
+                                            <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{act.exerciseName}</div>
+                                            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{safeFormat(act.date, 'MMM d, yyyy')} • {act.workoutName}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontWeight: 800, color: '#38bdf8' }}>{act.minutes} min</div>
+                                            <div style={{ fontSize: '0.68rem', color: '#f59e0b', fontWeight: 700 }}>🔥 {act.calories} kcal</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* STATUS CARDS */}

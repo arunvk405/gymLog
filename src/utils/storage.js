@@ -3,18 +3,42 @@ import { collection, addDoc, getDocs, query, where, doc, setDoc, getDoc, deleteD
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { EXERCISE_DATABASE } from '../data/exercises';
 
+/**
+ * Recursively cleanses an object before writing to Firestore,
+ * removing any undefined fields and converting NaN to 0.
+ */
+export const sanitizeForFirestore = (obj) => {
+    if (obj === undefined) return null;
+    if (obj === null) return null;
+    if (typeof obj === 'number' && isNaN(obj)) return 0;
+    if (typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) {
+        return obj.map(item => sanitizeForFirestore(item)).filter(item => item !== undefined);
+    }
+    const clean = {};
+    Object.keys(obj).forEach(key => {
+        const val = obj[key];
+        if (val !== undefined) {
+            clean[key] = sanitizeForFirestore(val);
+        }
+    });
+    return clean;
+};
+
 export const saveWorkout = async (workout, uid, workoutDate) => {
     if (!uid) throw new Error("User not authenticated");
 
     const sessionDate = workoutDate ? new Date(workoutDate + 'T12:00:00') : new Date();
 
-    const workoutData = {
+    const rawWorkoutData = {
         ...workout,
         userId: uid,
         timestamp: sessionDate.getTime(),
         date: sessionDate.toISOString(),
         app_version: 'bulkbro_v1'
     };
+
+    const workoutData = sanitizeForFirestore(rawWorkoutData);
 
     try {
         const docRef = await addDoc(collection(db, 'workouts'), workoutData);
@@ -28,12 +52,15 @@ export const saveWorkout = async (workout, uid, workoutDate) => {
 export const updateWorkout = async (workoutId, data) => {
     if (!workoutId) throw new Error("No workout ID");
     try {
-        await setDoc(doc(db, 'workouts', workoutId), data, { merge: true });
+        const cleanData = sanitizeForFirestore(data);
+        await setDoc(doc(db, 'workouts', workoutId), cleanData, { merge: true });
     } catch (e) {
         console.error("Update workout error:", e);
         throw e;
     }
-}; export const deleteWorkout = async (workoutId) => {
+};
+
+export const deleteWorkout = async (workoutId) => {
     if (!workoutId) throw new Error("No workout ID");
     try {
         await deleteDoc(doc(db, 'workouts', workoutId));
@@ -111,12 +138,13 @@ export const fetchProfile = async (uid) => {
     };
 };
 
-export const logWeightHistory = async (uid, weight, bodyfat) => {
+export const logWeightHistory = async (uid, weight, bodyfat, customDate) => {
     if (!uid) return;
     try {
-        const timestamp = new Date().getTime();
-        const date = new Date().toISOString();
-        await addDoc(collection(db, 'weight_history'), {
+        const sessionDate = customDate ? new Date(customDate + 'T12:00:00') : new Date();
+        const timestamp = sessionDate.getTime();
+        const date = sessionDate.toISOString();
+        const docRef = await addDoc(collection(db, 'weight_history'), {
             userId: uid,
             weight: parseFloat(weight),
             bodyfat: parseFloat(bodyfat) || 0,
@@ -131,8 +159,63 @@ export const logWeightHistory = async (uid, weight, bodyfat) => {
             bodyfat: parseFloat(bodyfat) || 15
         }, { merge: true });
 
+        return docRef.id;
     } catch (e) {
         console.error("Weight Log Error:", e);
+        throw e;
+    }
+};
+
+export const updateWeightLog = async (logId, data, uid) => {
+    if (!logId) throw new Error("No weight log ID provided");
+    try {
+        const updateData = {
+            ...data,
+            weight: parseFloat(data.weight),
+            bodyfat: data.bodyfat !== undefined ? parseFloat(data.bodyfat) || 0 : 0
+        };
+        if (data.customDate || data.date) {
+            const dateObj = new Date(data.customDate ? (data.customDate + 'T12:00:00') : data.date);
+            if (!isNaN(dateObj.getTime())) {
+                updateData.timestamp = dateObj.getTime();
+                updateData.date = dateObj.toISOString();
+            }
+        }
+        await setDoc(doc(db, 'weight_history', logId), updateData, { merge: true });
+
+        // Update profile current bodyweight if uid provided
+        if (uid && updateData.weight) {
+            const profileRef = doc(db, 'profiles', uid);
+            await setDoc(profileRef, {
+                bodyweight: updateData.weight,
+                bodyfat: updateData.bodyfat || 15
+            }, { merge: true });
+        }
+    } catch (e) {
+        console.error("Update Weight Log Error:", e);
+        throw e;
+    }
+};
+
+export const deleteWeightLog = async (logId, uid) => {
+    if (!logId) throw new Error("No weight log ID provided");
+    try {
+        await deleteDoc(doc(db, 'weight_history', logId));
+
+        // If uid provided, sync profile with latest remaining log
+        if (uid) {
+            const remaining = await fetchWeightHistory(uid);
+            if (remaining.length > 0) {
+                const latest = remaining[remaining.length - 1];
+                const profileRef = doc(db, 'profiles', uid);
+                await setDoc(profileRef, {
+                    bodyweight: parseFloat(latest.weight),
+                    bodyfat: parseFloat(latest.bodyfat) || 15
+                }, { merge: true });
+            }
+        }
+    } catch (e) {
+        console.error("Delete Weight Log Error:", e);
         throw e;
     }
 };
@@ -146,7 +229,22 @@ export const fetchWeightHistory = async (uid) => {
         );
         const snap = await getDocs(q);
         const history = [];
-        snap.forEach(d => history.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => {
+            const data = d.data();
+            let timestamp = data.timestamp;
+            if (!timestamp && data.date) {
+                const parsed = new Date(data.date).getTime();
+                if (!isNaN(parsed)) timestamp = parsed;
+            }
+            if (!timestamp) timestamp = Date.now();
+            history.push({
+                id: d.id,
+                ...data,
+                timestamp,
+                weight: parseFloat(data.weight) || 0,
+                bodyfat: parseFloat(data.bodyfat) || 0
+            });
+        });
         return history.sort((a, b) => a.timestamp - b.timestamp);
     } catch (e) {
         console.error("Fetch weight history error:", e);

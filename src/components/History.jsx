@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { 
     Calendar, Clock, ChevronDown, ChevronUp, Search, X, Save, Pencil, 
     Trash2, Download, FileText, TrendingUp, Target, Activity, Zap, 
-    BicepsFlexed, Shield, Sword, Quote, Info
+    BicepsFlexed, Shield, Sword, Quote, Info, Flame
 } from 'lucide-react';
 import { format, isToday, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { fetchHistory as getWorkouts, deleteWorkout, updateWorkout } from '../utils/storage';
 import CustomDatePicker from './CustomDatePicker';
 import ExerciseDetailModal from './ExerciseDetailModal';
+import AnatomyViewer from './AnatomyViewer';
 import { normalizeExerciseMuscles, getRegionDisplayName } from '../data/muscles';
+import { isCardioExercise } from '../utils/analytics';
 
 const getWorkoutIcon = (name = "") => {
     const n = name.toLowerCase();
+    if (n.includes('treadmill') || n.includes('running') || n.includes('jogging') || n.includes('sprint') || n.includes('walk') || n.includes('cycling') || n.includes('bike') || n.includes('spin') || n.includes('stair') || n.includes('rowing') || n.includes('elliptical') || n.includes('jump rope') || n.includes('cardio')) return <Flame size={16} color="#ec4899" />;
     if (n.includes('chest') || n.includes('bench')) return <Target size={16} color="var(--accent-color)" />;
     if (n.includes('back') || n.includes('row')) return <Activity size={16} color="var(--accent-color)" />;
     if (n.includes('leg') || n.includes('squat')) return <Zap size={16} color="var(--accent-color)" />;
@@ -32,6 +35,7 @@ const History = ({ history, onUpdate }) => {
     const [saving, setSaving] = useState(false);
     const [showEditDatePicker, setShowEditDatePicker] = useState(false);
     const [inspectingExercise, setInspectingExercise] = useState(null);
+    const [showAnatomyMap, setShowAnatomyMap] = useState({});
 
     const toggleExpand = (id) => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -406,101 +410,194 @@ const History = ({ history, onUpdate }) => {
                                             const norm = normalizeExerciseMuscles(ex);
                                             return (
                                                 <div key={exIdx} style={{ marginBottom: '1.25rem' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '0.9rem', marginBottom: '0.75rem', gap: '8px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0, flex: 1 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                                                 {getWorkoutIcon(ex.name)}
-                                                                <span style={{ fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.3px' }}>{ex.name}</span>
+                                                                <span style={{ fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.3px', fontSize: '0.95rem' }}>{ex.name}</span>
+                                                                {isCardioExercise(ex) && (
+                                                                    <span style={{
+                                                                        fontSize: '0.6rem', fontWeight: 900, color: '#ffffff',
+                                                                        background: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+                                                                        padding: '1px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                                                                    }}>
+                                                                        CARDIO
+                                                                    </span>
+                                                                )}
                                                                 <button
                                                                     type="button"
+                                                                    className="icon-btn"
                                                                     onClick={() => setInspectingExercise(ex)}
                                                                     style={{
-                                                                        background: 'var(--muted-color)', border: 'none', borderRadius: '50%',
-                                                                        width: '24px', height: '24px', display: 'flex', alignItems: 'center',
-                                                                        justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)'
+                                                                        width: '24px',
+                                                                        height: '24px',
+                                                                        background: 'rgba(56, 189, 248, 0.15)',
+                                                                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                                                                        borderRadius: '50%',
+                                                                        color: '#38bdf8',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        cursor: 'pointer',
+                                                                        padding: 0,
+                                                                        flexShrink: 0,
+                                                                        boxShadow: 'none'
                                                                     }}
                                                                     title="Inspect Target Muscle Anatomy"
                                                                 >
                                                                     <Info size={13} />
                                                                 </button>
                                                             </div>
-                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginLeft: '26px' }}>
-                                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                    Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
-                                                                </span>
-                                                                {norm.secondaryRegions.length > 0 && (
-                                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
-                                                                        Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                            {(() => {
+                                                                const mapKey = `${sessionId}_${exIdx}`;
+                                                                const isOpen = showAnatomyMap[mapKey];
+                                                                return (
+                                                                    <div>
+                                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                                                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                                Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}
+                                                                            </span>
+                                                                            {norm.secondaryRegions.length > 0 && (
+                                                                                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '6px' }}>
+                                                                                    Sec: {norm.secondaryRegions.map(getRegionDisplayName).join(', ')}
+                                                                                </span>
+                                                                            )}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setShowAnatomyMap(prev => ({ ...prev, [mapKey]: !prev[mapKey] }))}
+                                                                                style={{
+                                                                                    fontSize: '0.65rem', fontWeight: 800,
+                                                                                    color: isOpen ? 'white' : 'var(--accent-color)',
+                                                                                    background: isOpen ? 'var(--accent-color)' : 'rgba(56, 189, 248, 0.12)',
+                                                                                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                                                                                    padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
+                                                                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                                                                    boxShadow: 'none'
+                                                                                }}
+                                                                            >
+                                                                                📷 Muscle Anatomy Image
+                                                                            </button>
+                                                                        </div>
+                                                                        {isOpen && (
+                                                                            <div style={{
+                                                                                marginTop: '0.6rem', padding: '0.5rem', background: 'var(--bg-color)',
+                                                                                border: '1px solid var(--border-color)', borderRadius: '14px'
+                                                                            }}>
+                                                                                <AnatomyViewer
+                                                                                    primaryRegions={norm.primaryRegions}
+                                                                                    secondaryRegions={norm.secondaryRegions}
+                                                                                    primaryGroup={norm.primaryGroup}
+                                                                                    height={160}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
-                                                        <div className="glass-panel" style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, opacity: 0.8 }}>
-                                                            VOLUME: <span style={{ color: 'var(--accent-color)' }}>{calculateVolume(ex.sets)}</span> KG
-                                                        </div>
+                                                        {(() => {
+                                                            const isCardio = isCardioExercise(ex);
+                                                            if (isCardio) {
+                                                                const totalMins = (ex.sets || []).reduce((sum, s) => sum + (parseInt(s.reps) || 0), 0);
+                                                                return (
+                                                                    <div className="glass-panel" style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', padding: '4px 8px', borderRadius: '8px', fontWeight: 700, opacity: 0.95, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                                                        CARDIO: <span style={{ color: '#ec4899', fontWeight: 800 }}>{totalMins} MINS</span>
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return (
+                                                                <div className="glass-panel" style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', padding: '4px 8px', borderRadius: '8px', fontWeight: 700, opacity: 0.95, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                                                    VOLUME: <span style={{ color: 'var(--accent-color)', fontWeight: 800 }}>{calculateVolume(ex.sets)}</span> KG
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
 
-                                                {isEditing ? (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                        {ex.sets.map((set, setIdx) => (
-                                                            <div key={setIdx} style={{
-                                                                display: 'grid', gridTemplateColumns: '40px 1fr 1fr',
-                                                                gap: '12px', alignItems: 'center'
-                                                            }}>
-                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 800, textAlign: 'center' }}>
-                                                                    S{setIdx + 1}
-                                                                </span>
-                                                                <div style={{ position: 'relative' }}>
-                                                                    <input
-                                                                        type="number"
-                                                                        inputMode="decimal"
-                                                                        value={set.weight}
-                                                                        onFocus={(e) => e.target.select()}
-                                                                        onChange={(e) => updateEditSet(exIdx, setIdx, 'weight', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                                                        style={{
-                                                                            textAlign: 'center', fontWeight: 800, fontSize: '1rem',
-                                                                            padding: '0.6rem', background: 'var(--muted-color)', border: '1px solid var(--border-color)',
-                                                                            borderRadius: '12px', width: '100%'
-                                                                        }}
-                                                                    />
-                                                                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, opacity: 0.6 }}>KG</span>
-                                                                </div>
-                                                                <div style={{ position: 'relative' }}>
-                                                                    <input
-                                                                        type="number"
-                                                                        inputMode="numeric"
-                                                                        value={set.reps}
-                                                                        onFocus={(e) => e.target.select()}
-                                                                        onChange={(e) => updateEditSet(exIdx, setIdx, 'reps', e.target.value === '' ? '' : parseInt(e.target.value))}
-                                                                        style={{
-                                                                            textAlign: 'center', fontWeight: 800, fontSize: '1rem',
-                                                                            padding: '0.6rem', background: 'var(--muted-color)', border: '1px solid var(--border-color)',
-                                                                            borderRadius: '12px', width: '100%'
-                                                                        }}
-                                                                    />
-                                                                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 800, opacity: 0.6 }}>REPS</span>
-                                                                </div>
+                                                {(() => {
+                                                    const isCardio = isCardioExercise(ex);
+                                                    if (isEditing) {
+                                                        return (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                {ex.sets.map((set, setIdx) => (
+                                                                    <div key={setIdx} style={{
+                                                                        display: 'grid', gridTemplateColumns: '40px 1fr 1fr',
+                                                                        gap: '12px', alignItems: 'center'
+                                                                    }}>
+                                                                        <span style={{ fontSize: '0.75rem', color: isCardio ? '#ec4899' : 'var(--text-secondary)', fontWeight: 800, textAlign: 'center' }}>
+                                                                            {isCardio ? `I${setIdx + 1}` : `S${setIdx + 1}`}
+                                                                        </span>
+                                                                        <div style={{ position: 'relative' }}>
+                                                                            <input
+                                                                                type="number"
+                                                                                inputMode="decimal"
+                                                                                value={set.weight}
+                                                                                onFocus={(e) => e.target.select()}
+                                                                                onChange={(e) => updateEditSet(exIdx, setIdx, 'weight', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                                                                style={{
+                                                                                    textAlign: 'center', fontWeight: 800, fontSize: '1rem',
+                                                                                    padding: '0.6rem', background: 'var(--muted-color)', border: '1px solid var(--border-color)',
+                                                                                    borderRadius: '12px', width: '100%'
+                                                                                }}
+                                                                            />
+                                                                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.6rem', color: isCardio ? '#f59e0b' : 'var(--text-secondary)', fontWeight: 800, opacity: 0.8 }}>
+                                                                                {isCardio ? 'LVL/SPD' : 'KG'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div style={{ position: 'relative' }}>
+                                                                            <input
+                                                                                type="number"
+                                                                                inputMode="numeric"
+                                                                                value={set.reps}
+                                                                                onFocus={(e) => e.target.select()}
+                                                                                onChange={(e) => updateEditSet(exIdx, setIdx, 'reps', e.target.value === '' ? '' : parseInt(e.target.value))}
+                                                                                style={{
+                                                                                    textAlign: 'center', fontWeight: 800, fontSize: '1rem',
+                                                                                    padding: '0.6rem', background: 'var(--muted-color)', border: '1px solid var(--border-color)',
+                                                                                    borderRadius: '12px', width: '100%'
+                                                                                }}
+                                                                            />
+                                                                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.6rem', color: isCardio ? '#38bdf8' : 'var(--text-secondary)', fontWeight: 800, opacity: 0.8 }}>
+                                                                                {isCardio ? 'MINS' : 'REPS'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                                        {ex.sets.map((set, j) => (
-                                                            <div key={j} style={{
-                                                                background: 'var(--muted-color)',
-                                                                padding: '0.4rem 0.75rem',
-                                                                borderRadius: '10px',
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: 600,
-                                                                border: set.completed ? '1px solid var(--success-color)' : '1px solid var(--border-color)',
-                                                                color: 'var(--text-primary)',
-                                                                opacity: 0.9
-                                                            }}>
-                                                                {set.weight} <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>KG</span> × {set.reps} <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>REPS</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                                            {ex.sets.map((set, j) => (
+                                                                <div key={j} style={{
+                                                                    background: 'var(--muted-color)',
+                                                                    padding: '0.4rem 0.75rem',
+                                                                    borderRadius: '10px',
+                                                                    fontSize: '0.8rem',
+                                                                    fontWeight: 600,
+                                                                    border: set.completed ? '1px solid var(--success-color)' : '1px solid var(--border-color)',
+                                                                    color: 'var(--text-primary)',
+                                                                    opacity: 0.9
+                                                                }}>
+                                                                    {isCardio ? (
+                                                                        <span>
+                                                                            <strong style={{ color: '#38bdf8' }}>{set.reps || 0}</strong> <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>MINS</span>
+                                                                            {parseFloat(set.weight) > 0 ? (
+                                                                                <span style={{ marginLeft: '4px', fontSize: '0.75rem', color: '#f59e0b' }}>
+                                                                                    @ Lvl/Spd {set.weight}
+                                                                                </span>
+                                                                            ) : ''}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span>
+                                                                            {set.weight} <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>KG</span> × {set.reps} <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>REPS</span>
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })}

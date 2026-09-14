@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Target, Dumbbell, Zap, Layers, CheckCircle2, ShieldAlert, Cpu, Activity, Award } from 'lucide-react';
+import { X, Target, Dumbbell, Zap, Layers, CheckCircle2, ShieldAlert, Cpu, Activity, Award, Flame } from 'lucide-react';
 import AnatomyViewer from './AnatomyViewer';
 import { normalizeExerciseMuscles, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
+import { isCardioExercise } from '../utils/analytics';
 
 const getEquipmentName = (exercise) => {
     if (exercise.equipment) return exercise.equipment;
     const name = (exercise.name || '').toLowerCase();
+    if (name.includes('treadmill') || name.includes('bike') || name.includes('cycling') || name.includes('rower') || name.includes('rowing') || name.includes('elliptical') || name.includes('stairmaster') || name.includes('stair') || name.includes('jump rope')) return 'Cardio';
     if (name.includes('barbell')) return 'Barbell';
     if (name.includes('dumbbell') || name.includes('db')) return 'Dumbbell';
     if (name.includes('cable')) return 'Cable';
@@ -19,6 +21,36 @@ const getEquipmentName = (exercise) => {
 
 const getExecutionTips = (exercise) => {
     const name = (exercise.name || '').toLowerCase();
+    if (name.includes('treadmill') || name.includes('running') || name.includes('jogging')) {
+        return [
+            'Maintain an upright posture with a slight forward lean from the ankles, not the hips.',
+            'Land softly on your mid-foot with a quick, rhythmic cadence (160–180 steps/min).',
+            'Keep shoulders relaxed and arms swinging smoothly in a front-to-back arc.',
+            'For incline walking, push powerfully through the balls of your feet and calves without holding the handrails.'
+        ];
+    }
+    if (name.includes('cycling') || name.includes('bike') || name.includes('spin')) {
+        return [
+            'Adjust seat height so your knee has a slight 25–35° bend at the bottom of the pedal stroke.',
+            'Apply smooth circular pressure through the entire revolution (push down through balls of feet, pull up lightly).',
+            'Maintain a stable upper body and brace core to eliminate bouncing in the saddle.',
+            'Keep cadence steady (70–90 RPM) and use resistance dials to increase cardiovascular load.'
+        ];
+    }
+    if (name.includes('stairmaster') || name.includes('stair')) {
+        return [
+            'Take full deliberate steps onto the center of the step rather than bouncing on toes.',
+            'Stand tall with core engaged—avoid leaning forward heavily on the handrails.',
+            'Drive through the heels and mid-foot to engage the glutes and hamstrings maximally.'
+        ];
+    }
+    if (name.includes('rowing') || name.includes('rower')) {
+        return [
+            'Follow the proper drive sequence: Legs first (60%), Core hinge backward (20%), then Arms pull (20%).',
+            'Reverse the sequence on recovery: Arms extend, Core hinges forward, then Knees bend.',
+            'Keep your back straight and drive explosively through the heels.'
+        ];
+    }
     if (name.includes('bench press')) {
         return [
             'Maintain a slight arch in your lower back with feet firmly planted on the floor.',
@@ -109,6 +141,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
     const { primaryGroup, primaryRegions, secondaryGroups, secondaryRegions } = normalizeExerciseMuscles(exercise);
     const equipment = getEquipmentName(exercise);
     const executionTips = getExecutionTips(exercise);
+    const isCardio = isCardioExercise(exercise);
     const isCompound = (exercise.type || '').toLowerCase() === 'compound';
 
     return createPortal(
@@ -157,16 +190,29 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                 {/* Header Section */}
                 <div style={{ marginBottom: '1.25rem' }}>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                        <span style={{
-                            padding: '4px 10px', borderRadius: '8px',
-                            background: isCompound ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            border: isCompound ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-                            fontSize: '0.65rem', fontWeight: 900,
-                            color: isCompound ? 'var(--accent-color)' : '#f59e0b',
-                            textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '4px'
-                        }}>
-                            <Cpu size={12} /> {isCompound ? 'Compound Movement' : 'Isolation / Accessory'}
-                        </span>
+                        {isCardio ? (
+                            <span style={{
+                                padding: '4px 10px', borderRadius: '8px',
+                                background: 'rgba(236, 72, 153, 0.15)',
+                                border: '1px solid rgba(236, 72, 153, 0.3)',
+                                fontSize: '0.65rem', fontWeight: 900,
+                                color: '#ec4899',
+                                textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            }}>
+                                <Flame size={12} /> Cardio & Endurance
+                            </span>
+                        ) : (
+                            <span style={{
+                                padding: '4px 10px', borderRadius: '8px',
+                                background: isCompound ? 'rgba(56, 189, 248, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                border: isCompound ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                                fontSize: '0.65rem', fontWeight: 900,
+                                color: isCompound ? 'var(--accent-color)' : '#f59e0b',
+                                textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            }}>
+                                <Cpu size={12} /> {isCompound ? 'Compound Movement' : 'Isolation / Accessory'}
+                            </span>
+                        )}
 
                         <span style={{
                             padding: '4px 10px', borderRadius: '8px',
@@ -174,7 +220,7 @@ const ExerciseDetailModal = ({ exercise, onClose }) => {
                             fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                         }}>
-                            <Dumbbell size={12} /> {equipment}
+                            {isCardio ? <Activity size={12} /> : <Dumbbell size={12} />} {equipment}
                         </span>
                     </div>
 

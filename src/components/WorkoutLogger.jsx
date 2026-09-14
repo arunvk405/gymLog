@@ -12,6 +12,8 @@ import ExerciseDetailModal from './ExerciseDetailModal';
 import CreateExerciseModal from './CreateExerciseModal';
 import AnatomyViewer from './AnatomyViewer';
 import { normalizeExerciseMuscles, getRegionDisplayName } from '../data/muscles';
+import { EXERCISE_DATABASE } from '../data/exercises';
+import { isCardioExercise } from '../utils/analytics';
 import { db } from '../firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
@@ -120,6 +122,20 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
     const [inspectingExercise, setInspectingExercise] = useState(null);
     const [showAnatomyMap, setShowAnatomyMap] = useState({});
     const [showCreateCustomModal, setShowCreateCustomModal] = useState(false);
+
+    const activeDb = React.useMemo(() => {
+        const map = new Map();
+        EXERCISE_DATABASE.forEach(e => {
+            if (e && e.id) map.set(String(e.id), e);
+        });
+        (exerciseDb || []).forEach(e => {
+            if (e && e.id) {
+                const existing = map.get(String(e.id)) || {};
+                map.set(String(e.id), { ...existing, ...e });
+            }
+        });
+        return Array.from(map.values()).filter(e => !e.hidden);
+    }, [exerciseDb]);
 
     const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -353,12 +369,22 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         setWorkout(newWorkout);
     };
 
-    // Bumps all sets in an exercise by a fixed amount
+    // Bumps all sets in an exercise by a fixed weight amount
     const bumpAllWeights = (exerciseIndex, amount = 2.5) => {
         const newWorkout = { ...workout };
         newWorkout.exercises[exerciseIndex].sets = newWorkout.exercises[exerciseIndex].sets.map(s => ({
             ...s,
             weight: Math.round((parseFloat(s.weight || 0) + amount) * 100) / 100
+        }));
+        setWorkout(newWorkout);
+    };
+
+    // Bumps all sets in a cardio exercise by minutes
+    const bumpAllReps = (exerciseIndex, amount = 5) => {
+        const newWorkout = { ...workout };
+        newWorkout.exercises[exerciseIndex].sets = newWorkout.exercises[exerciseIndex].sets.map(s => ({
+            ...s,
+            reps: Math.max(1, (parseInt(s.reps || 0) + amount))
         }));
         setWorkout(newWorkout);
     };
@@ -400,17 +426,39 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         newExercises.splice(result.destination.index, 0, reorderedItem);
         setWorkout({ ...workout, exercises: newExercises });
     };
+    const handleRemoveExercise = (exIdx) => {
+        const exName = workout.exercises[exIdx]?.name || 'this exercise';
+        const hasCompletedSets = workout.exercises[exIdx]?.sets?.some(s => s.completed);
+        if (hasCompletedSets) {
+            if (!window.confirm(`You have completed sets for ${exName}. Are you sure you want to remove it from today's workout?`)) {
+                return;
+            }
+        }
+        const newExercises = workout.exercises.filter((_, idx) => idx !== exIdx);
+        setWorkout({ ...workout, exercises: newExercises });
+        toast.success(`Removed ${exName} from today's workout`);
+    };
+
     const handleAddExercise = (exercise) => {
+        if (!exercise) return;
         const newEx = {
-            id: exercise.id,
-            name: exercise.name,
-            targetMuscleCategory: exercise.targetMuscleCategory,
+            id: exercise.id || `custom_${Date.now()}`,
+            name: exercise.name || 'Custom Exercise',
+            targetMuscleCategory: exercise.targetMuscleCategory || exercise.category || 'Chest',
+            primaryMuscleGroup: exercise.primaryMuscleGroup || exercise.muscleGroup || 'Chest',
+            primaryRegions: Array.isArray(exercise.primaryRegions) ? exercise.primaryRegions : (exercise.primaryRegion ? [exercise.primaryRegion] : []),
+            secondaryMuscleGroups: Array.isArray(exercise.secondaryMuscleGroups) ? exercise.secondaryMuscleGroups : [],
+            secondaryRegions: Array.isArray(exercise.secondaryRegions) ? exercise.secondaryRegions : [],
             startWeight: 0,
             sets: [{ id: Date.now(), weight: 0, reps: 0, completed: false, prevWeight: 0 }]
         };
-        setWorkout({ ...workout, exercises: [...workout.exercises, newEx] });
+        setWorkout(prev => ({
+            ...prev,
+            exercises: [...(prev.exercises || []), newEx]
+        }));
         setShowExerciseModal(false);
         setSearchQuery('');
+        toast.success(`Added ${newEx.name} to today's workout`);
     };
 
     const handleFinish = async () => {
@@ -585,17 +633,40 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                             <GripVertical size={20} />
                                                         </div>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                                                 {getWorkoutIcon(ex.name)}
                                                                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-color)', fontWeight: 900, textTransform: 'uppercase' }}>{ex.name}</h3>
+                                                                {isCardioExercise(ex) && (
+                                                                    <span style={{
+                                                                        fontSize: '0.6rem', fontWeight: 900, color: '#ffffff',
+                                                                        background: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+                                                                        padding: '1px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                                                                    }}>
+                                                                        CARDIO
+                                                                    </span>
+                                                                )}
                                                                 <button
                                                                     type="button"
                                                                     className="icon-btn"
                                                                     onClick={() => setInspectingExercise(ex)}
-                                                                    style={{ width: '26px', height: '26px' }}
+                                                                    style={{
+                                                                        width: '24px',
+                                                                        height: '24px',
+                                                                        background: 'rgba(56, 189, 248, 0.15)',
+                                                                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                                                                        borderRadius: '50%',
+                                                                        color: '#38bdf8',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        cursor: 'pointer',
+                                                                        padding: 0,
+                                                                        flexShrink: 0,
+                                                                        boxShadow: 'none'
+                                                                    }}
                                                                     title="Inspect Target Muscle Anatomy"
                                                                 >
-                                                                    <Info size={14} />
+                                                                    <Info size={13} />
                                                                 </button>
                                                             </div>
                                                             {(() => {
@@ -646,8 +717,32 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                             })()}
                                                         </div>
                                                     </div>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '4px' }}>{ex.sets.filter(s => s.completed).length} / {ex.sets.length} DONE</div>
+                                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                                                                {ex.sets.filter(s => s.completed).length} / {ex.sets.length} DONE
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveExercise(exIdx)}
+                                                                style={{
+                                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                                    color: 'var(--error-color)',
+                                                                    borderRadius: '8px',
+                                                                    padding: '4px',
+                                                                    cursor: 'pointer',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    width: '26px',
+                                                                    height: '26px'
+                                                                }}
+                                                                title="Remove exercise from today's workout"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
                                                         <button
                                                             onClick={() => selectAllSets(exIdx)}
                                                             style={{
@@ -660,8 +755,7 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                                 alignItems: 'center',
                                                                 gap: '4px',
                                                                 cursor: 'pointer',
-                                                                fontWeight: 700,
-                                                                marginLeft: 'auto'
+                                                                fontWeight: 700
                                                             }}
                                                         >
                                                             <CheckCircle2 size={14} />
@@ -671,216 +765,186 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                 </div>
 
                                                 {/* Quick-bump row for entire exercise */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                                                    <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.7 }}>Bump All:</span>
-                                                    {[-2.5, 2.5, 3, 5, 10].map(amount => (
-                                                        <button
-                                                            key={amount}
-                                                            onClick={() => bumpAllWeights(exIdx, amount)}
-                                                            style={{
-                                                                padding: '0.25rem 0.5rem',
-                                                                borderRadius: '8px',
-                                                                background: amount > 0 ? 'var(--accent-color)' : 'var(--muted-color)',
-                                                                border: 'none',
-                                                                color: amount > 0 ? 'white' : 'var(--text-primary)',
-                                                                fontWeight: 800,
-                                                                fontSize: '0.7rem',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            {amount > 0 ? '+' : ''}{amount}kg
-                                                        </button>
-                                                    ))}
-
-                                                    {!ex.sets.some(s => s.isWarmup) && (
-                                                        <button
-                                                            onClick={() => generateWarmupSets(exIdx)}
-                                                            style={{
-                                                                padding: '0.25rem 0.5rem',
-                                                                borderRadius: '8px',
-                                                                background: 'rgba(234, 179, 8, 0.1)',
-                                                                border: '1px solid #eab308',
-                                                                color: '#eab308',
-                                                                fontWeight: 800,
-                                                                fontSize: '0.7rem',
-                                                                cursor: 'pointer',
-                                                                boxShadow: 'none',
-                                                                textTransform: 'uppercase',
-                                                                marginLeft: 'auto'
-                                                            }}
-                                                        >
-                                                            + Warm-up
-                                                        </button>
-                                                    )}
-                                                </div>
-
-                                                <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', marginBottom: '0.6rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>
-                                                    <span>Set</span>
-                                                    <span style={{ textAlign: 'center' }}>KG</span>
-                                                    <span style={{ textAlign: 'center' }}>Reps</span>
-                                                    <span style={{ textAlign: 'center' }}>Log</span>
-                                                    <span></span>
-                                                </div>
-
-                                                <div>
-                                                    {ex.sets.map((set, setIdx) => (
-                                                        <React.Fragment key={set.id}>
-                                                            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', alignItems: 'center', marginBottom: '1.2rem' }}>
-                                                                <span style={{ color: set.isWarmup ? '#eab308' : 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>
-                                                                    {set.isWarmup ? `W` : setIdx + 1 - ex.sets.filter(s => s.isWarmup).length}
-                                                                </span>
-
-                                                                <div style={{ position: 'relative' }}>
-                                                                    <input
-                                                                        type="number"
-                                                                        inputMode="decimal"
-                                                                        value={set.weight}
-                                                                        onFocus={(e) => e.target.select()}
-                                                                        onChange={(e) => {
-                                                                            const val = e.target.value;
-                                                                            updateSet(exIdx, setIdx, 'weight', val === '' ? '' : parseFloat(val));
-                                                                        }}
-                                                                        onBlur={(e) => {
-                                                                            if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'weight', 0);
-                                                                        }}
-                                                                        step="0.5"
-                                                                        style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
-                                                                    />
-                                                                    <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                                                                        LAST: {set.prevWeight}kg
-                                                                    </div>
-                                                                    <button
-                                                                        onClick={() => setActivePlateCalc({ exIdx, setIdx, weight: set.weight })}
-                                                                        style={{
-                                                                            position: 'absolute',
-                                                                            right: '6px',
-                                                                            bottom: '6px',
-                                                                            background: 'none',
-                                                                            border: 'none',
-                                                                            cursor: 'pointer',
-                                                                            padding: '2px',
-                                                                            color: 'var(--text-secondary)',
-                                                                            opacity: 0.5,
-                                                                            boxShadow: 'none',
-                                                                            width: '18px',
-                                                                            height: '18px',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center'
-                                                                        }}
-                                                                        title="Plate Calculator"
-                                                                    >
-                                                                        <Calculator size={12} />
-                                                                    </button>
-                                                                </div>
-
-                                                                <input
-                                                                    type="number"
-                                                                    inputMode="numeric"
-                                                                    pattern="[0-9]*"
-                                                                    value={set.reps}
-                                                                    onFocus={(e) => e.target.select()}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value;
-                                                                        updateSet(exIdx, setIdx, 'reps', val === '' ? '' : parseInt(val));
-                                                                    }}
-                                                                    onBlur={(e) => {
-                                                                        if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'reps', 0);
-                                                                    }}
-                                                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
-                                                                />
-
+                                                {(() => {
+                                                    const isCardio = isCardioExercise(ex);
+                                                    return (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.7 }}>
+                                                                {isCardio ? 'Bump Time:' : 'Bump All:'}
+                                                            </span>
+                                                            {(isCardio ? [-5, 5, 10, 15] : [-2.5, 2.5, 3, 5, 10]).map(amount => (
                                                                 <button
-                                                                    onClick={() => toggleSet(exIdx, setIdx)}
+                                                                    key={amount}
+                                                                    onClick={() => isCardio ? bumpAllReps(exIdx, amount) : bumpAllWeights(exIdx, amount)}
                                                                     style={{
-                                                                        backgroundColor: set.completed ? 'var(--success-color)' : 'transparent',
-                                                                        border: `2px solid ${set.completed ? 'var(--success-color)' : 'var(--border-color)'}`,
-                                                                        padding: '0.4rem',
-                                                                        borderRadius: '50%',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        color: set.completed ? 'white' : 'transparent',
-                                                                        width: '34px',
-                                                                        height: '34px',
-                                                                        justifySelf: 'center',
-                                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                                        padding: '0.25rem 0.5rem',
+                                                                        borderRadius: '8px',
+                                                                        background: amount > 0 ? (isCardio ? '#ec4899' : 'var(--accent-color)') : 'var(--muted-color)',
+                                                                        border: 'none',
+                                                                        color: amount > 0 ? 'white' : 'var(--text-primary)',
+                                                                        fontWeight: 800,
+                                                                        fontSize: '0.7rem',
+                                                                        cursor: 'pointer'
                                                                     }}
                                                                 >
-                                                                    <Check size={16} />
+                                                                    {amount > 0 ? '+' : ''}{amount}{isCardio ? 'm' : 'kg'}
                                                                 </button>
+                                                            ))}
 
-                                                                {/* Delete set */}
+                                                            {!isCardio && !ex.sets.some(s => s.isWarmup) && (
                                                                 <button
-                                                                    onClick={() => deleteSet(exIdx, setIdx)}
+                                                                    onClick={() => generateWarmupSets(exIdx)}
                                                                     style={{
-                                                                        background: 'none', border: 'none', cursor: 'pointer',
-                                                                        padding: '4px', justifySelf: 'center',
-                                                                        color: ex.sets.length > 1 ? 'var(--error-color)' : 'var(--border-color)',
-                                                                        opacity: ex.sets.length > 1 ? 0.6 : 0.2
+                                                                        padding: '0.25rem 0.5rem',
+                                                                        borderRadius: '8px',
+                                                                        background: 'rgba(234, 179, 8, 0.1)',
+                                                                        border: '1px solid #eab308',
+                                                                        color: '#eab308',
+                                                                        fontWeight: 800,
+                                                                        fontSize: '0.7rem',
+                                                                        cursor: 'pointer',
+                                                                        boxShadow: 'none',
+                                                                        textTransform: 'uppercase',
+                                                                        marginLeft: 'auto'
                                                                     }}
-                                                                    disabled={ex.sets.length <= 1}
                                                                 >
-                                                                    <Trash2 size={14} />
+                                                                    + Warm-up
                                                                 </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+
+                                                {(() => {
+                                                    const isCardio = isCardioExercise(ex);
+                                                    return (
+                                                        <>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', marginBottom: '0.6rem', color: 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>
+                                                                <span>{isCardio ? 'Int' : 'Set'}</span>
+                                                                <span style={{ textAlign: 'center', color: isCardio ? '#f59e0b' : 'inherit' }}>{isCardio ? 'SPEED / LVL' : 'KG'}</span>
+                                                                <span style={{ textAlign: 'center', color: isCardio ? '#38bdf8' : 'inherit' }}>{isCardio ? 'TIME (MIN)' : 'Reps'}</span>
+                                                                <span style={{ textAlign: 'center' }}>Log</span>
+                                                                <span></span>
                                                             </div>
 
-                                                            {/* COMPACT INLINE REST TIMER */}
-                                                            {timerEndTime && timerLocation.exIdx === exIdx && timerLocation.setIdx === setIdx && (
-                                                                <div style={{
-                                                                    gridColumn: '1 / -1',
-                                                                    background: 'var(--muted-color)',
-                                                                    borderRadius: '12px',
-                                                                    padding: '0.4rem 0.8rem',
-                                                                    margin: '0 auto 1.2rem auto',
-                                                                    width: '90%',
-                                                                    border: '1px solid var(--border-color)',
-                                                                    display: 'flex',
-                                                                    flexDirection: 'column',
-                                                                    gap: '6px',
-                                                                    animation: 'slide-down 0.2s ease-out'
-                                                                }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                            <Loader2 size={12} className="spin" color="var(--accent-color)" />
-                                                                            <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--accent-color)', letterSpacing: '0.5px' }}>{formatTime(timeLeft)}</span>
-                                                                            <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', opacity: 0.8 }}>Resting</span>
-                                                                        </div>
-                                                                        <div style={{ display: 'flex', gap: '4px' }}>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setTimerEndTime(prev => prev + 30000);
-                                                                                    setTotalRestTime(prev => prev + 30);
-                                                                                }}
-                                                                                style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--panel-color)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.6rem' }}
-                                                                            >
-                                                                                +30s
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => setTimerEndTime(null)}
-                                                                                style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--accent-color)', border: 'none', color: 'white', fontWeight: 800, fontSize: '0.6rem' }}
-                                                                            >
-                                                                                SKIP
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div style={{ height: '3px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                                                        <div style={{
-                                                                            height: '100%',
-                                                                            background: 'var(--accent-color)',
-                                                                            width: '100%',
-                                                                            transform: `scaleX(${timeLeft / totalRestTime})`,
-                                                                            transformOrigin: 'left',
-                                                                            transition: 'transform 0.25s linear',
-                                                                            willChange: 'transform'
-                                                                        }} />
-                                                                    </div>
+                                                            <div>
+                                                                {ex.sets.map((set, setIdx) => (
+                                                                    <React.Fragment key={set.id}>
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', alignItems: 'center', marginBottom: '1.2rem' }}>
+                                                                            <span style={{ color: set.isWarmup ? '#eab308' : 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>
+                                                                                {set.isWarmup ? `W` : setIdx + 1 - ex.sets.filter(s => s.isWarmup).length}
+                                                                            </span>
 
-                                                                </div>
-                                                            )}
-                                                        </React.Fragment>
-                                                    ))}
-                                                </div>
+                                                                            <div style={{ position: 'relative' }}>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    inputMode="decimal"
+                                                                                    value={set.weight}
+                                                                                    onFocus={(e) => e.target.select()}
+                                                                                    onChange={(e) => {
+                                                                                        const val = e.target.value;
+                                                                                        updateSet(exIdx, setIdx, 'weight', val === '' ? '' : parseFloat(val));
+                                                                                    }}
+                                                                                    onBlur={(e) => {
+                                                                                        if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'weight', 0);
+                                                                                    }}
+                                                                                    step="0.5"
+                                                                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
+                                                                                />
+                                                                                <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                                                                                    {set.prevWeight ? (isCardio ? `LAST: Lvl ${set.prevWeight}` : `LAST: ${set.prevWeight}kg`) : ''}
+                                                                                </div>
+                                                                                {!isCardio && (
+                                                                                    <button
+                                                                                        onClick={() => setActivePlateCalc({ exIdx, setIdx, weight: set.weight })}
+                                                                                        style={{
+                                                                                            position: 'absolute',
+                                                                                            right: '6px',
+                                                                                            bottom: '6px',
+                                                                                            background: 'none',
+                                                                                            border: 'none',
+                                                                                            cursor: 'pointer',
+                                                                                            padding: '2px',
+                                                                                            color: 'var(--text-secondary)',
+                                                                                            opacity: 0.5,
+                                                                                            boxShadow: 'none',
+                                                                                            width: '18px',
+                                                                                            height: '18px',
+                                                                                            display: 'flex',
+                                                                                            alignItems: 'center',
+                                                                                            justifyContent: 'center'
+                                                                                        }}
+                                                                                        title="Plate Calculator"
+                                                                                    >
+                                                                                        <Calculator size={12} />
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div style={{ position: 'relative' }}>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    inputMode="numeric"
+                                                                                    pattern="[0-9]*"
+                                                                                    value={set.reps}
+                                                                                    onFocus={(e) => e.target.select()}
+                                                                                    onChange={(e) => {
+                                                                                        const val = e.target.value;
+                                                                                        updateSet(exIdx, setIdx, 'reps', val === '' ? '' : parseInt(val));
+                                                                                    }}
+                                                                                    onBlur={(e) => {
+                                                                                        if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'reps', isCardio ? 20 : 0);
+                                                                                    }}
+                                                                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)', width: '100%' }}
+                                                                                />
+                                                                                <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                                                                                    {set.prevReps ? (isCardio ? `LAST: ${set.prevReps}m` : `LAST: ${set.prevReps}`) : ''}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <button
+                                                                                onClick={() => toggleSet(exIdx, setIdx)}
+                                                                                style={{
+                                                                                    backgroundColor: set.completed ? 'var(--success-color)' : 'transparent',
+                                                                                    border: `2px solid ${set.completed ? 'var(--success-color)' : 'var(--border-color)'}`,
+                                                                                    padding: '0.4rem',
+                                                                                    borderRadius: '50%',
+                                                                                    cursor: 'pointer',
+                                                                                    width: '32px',
+                                                                                    height: '32px',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center',
+                                                                                    color: set.completed ? 'white' : 'transparent',
+                                                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                                                    boxShadow: set.completed ? '0 0 12px rgba(34, 197, 94, 0.4)' : 'none',
+                                                                                    transform: set.completed ? 'scale(1.05)' : 'scale(1)'
+                                                                                }}
+                                                                            >
+                                                                                <Check size={18} strokeWidth={3} />
+                                                                            </button>
+
+                                                                            <button
+                                                                                onClick={() => deleteSet(exIdx, setIdx)}
+                                                                                disabled={ex.sets.length <= 1}
+                                                                                style={{
+                                                                                    background: 'none', border: 'none',
+                                                                                    color: 'var(--text-secondary)',
+                                                                                    cursor: ex.sets.length <= 1 ? 'not-allowed' : 'pointer',
+                                                                                    opacity: ex.sets.length <= 1 ? 0.2 : 0.6,
+                                                                                    padding: '4px',
+                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                                }}
+                                                                            >
+                                                                                <Trash2 size={16} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </React.Fragment>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
 
                                                 <button
                                                     onClick={() => addSet(exIdx)}
@@ -1028,12 +1092,20 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                             WebkitOverflowScrolling: 'touch',
                             padding: '1rem calc(1rem + env(safe-area-inset-right, 0px)) calc(3rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px))'
                         }}>
-                            {(exerciseDb || []).filter(ex => {
+                            {activeDb.filter(ex => {
                                 const norm = normalizeExerciseMuscles(ex);
-                                const q = searchQuery.toLowerCase();
-                                return ex.name.toLowerCase().includes(q) ||
-                                    norm.primaryGroup.toLowerCase().includes(q) ||
-                                    norm.primaryRegions.some(r => r.toLowerCase().includes(q));
+                                const q = (searchQuery || '').toLowerCase().trim();
+                                if (!q) return true;
+                                const nameMatch = (ex.name || '').toLowerCase().includes(q);
+                                const equipMatch = (ex.equipment || '').toLowerCase().includes(q);
+                                const typeMatch = (ex.type || '').toLowerCase().includes(q);
+                                const groupMatch = (norm.primaryGroup || '').toLowerCase().includes(q);
+                                const primaryRegionMatch = (norm.primaryRegions || []).some(r => r.toLowerCase().includes(q));
+                                const secondaryRegionMatch = (norm.secondaryRegions || []).some(r => r.toLowerCase().includes(q));
+                                const isCardio = isCardioExercise(ex);
+                                const cardioSearchMatch = (q.includes('cardio') || q.includes('endurance') || q.includes('aerobic') || q.includes('tread') || q.includes('run') || q.includes('cycle') || q.includes('bike') || q.includes('stair') || q.includes('row')) && isCardio;
+
+                                return nameMatch || equipMatch || typeMatch || groupMatch || primaryRegionMatch || secondaryRegionMatch || cardioSearchMatch;
                             }).map(ex => {
                                 const norm = normalizeExerciseMuscles(ex);
                                 return (
@@ -1048,7 +1120,18 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                         }}
                                     >
                                         <div>
-                                            <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{ex.name}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{ex.name}</div>
+                                                {isCardioExercise(ex) && (
+                                                    <span style={{
+                                                        fontSize: '0.6rem', fontWeight: 900, color: '#ffffff',
+                                                        background: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+                                                        padding: '1px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                                                    }}>
+                                                        CARDIO
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
                                                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', background: '#38bdf8', padding: '2px 6px', borderRadius: '6px' }}>
                                                     Primary: {norm.primaryRegions.map(getRegionDisplayName).join(', ')}

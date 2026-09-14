@@ -544,7 +544,42 @@ export const EXERCISE_NAME_TARGETS = {
     'hand grippers': { primaryGroup: 'Forearms', primaryRegions: ['Forearm Flexors'], secondaryGroups: [], secondaryRegions: [] },
     'dumbbell radial & ulnar deviation': { primaryGroup: 'Forearms', primaryRegions: ['Forearm Extensors', 'Forearm Flexors'], secondaryGroups: ['Forearms'], secondaryRegions: ['Brachioradialis'] },
     'dumbbell forearm pronation & supination': { primaryGroup: 'Forearms', primaryRegions: ['Brachioradialis', 'Forearm Flexors'], secondaryGroups: ['Forearms'], secondaryRegions: ['Forearm Extensors'] },
-    'towel grip pull-ups (extreme grip challenge)': { primaryGroup: 'Forearms', primaryRegions: ['Forearm Flexors'], secondaryGroups: ['Back', 'Biceps'], secondaryRegions: ['Lats', 'Brachialis'] }
+    'towel grip pull-ups (extreme grip challenge)': { primaryGroup: 'Forearms', primaryRegions: ['Forearm Flexors'], secondaryGroups: ['Back', 'Biceps'], secondaryRegions: ['Lats', 'Brachialis'] },
+
+    // ==========================================
+    // CARDIO & ENDURANCE
+    // ==========================================
+    'treadmill': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Soleus', 'Gluteus Maximus'] },
+    'treadmill running': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Soleus', 'Gluteus Maximus'] },
+    'treadmill running / jogging': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Soleus', 'Gluteus Maximus'] },
+    'treadmill incline walk': { primaryGroup: 'Calves', primaryRegions: ['Gastrocnemius', 'Soleus'], secondaryGroups: ['Glutes', 'Hamstrings', 'Quadriceps'], secondaryRegions: ['Gluteus Maximus', 'Biceps Femoris', 'Vastus Lateralis'] },
+    'treadmill sprint intervals (hiit)': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'treadmill flat walking': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris'], secondaryGroups: ['Calves', 'Glutes'], secondaryRegions: ['Gastrocnemius', 'Gluteus Maximus'] },
+    'running': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'jogging': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'cycling': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis', 'Vastus Medialis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'stationary exercise bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis', 'Vastus Medialis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'stationary bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis', 'Vastus Medialis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'exercise bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis', 'Vastus Medialis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'spin bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis', 'Vastus Medialis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'spin bike hiit / cycling intervals': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis', 'Vastus Medialis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus'] },
+    'recumbent exercise bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Vastus Medialis', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Soleus', 'Gluteus Maximus'] },
+    'recumbent bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Vastus Medialis', 'Vastus Lateralis'], secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'], secondaryRegions: ['Biceps Femoris', 'Soleus', 'Gluteus Maximus'] },
+    'outdoor cycling / road biking': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Calves', 'Glutes', 'Hamstrings'], secondaryRegions: ['Gastrocnemius', 'Gluteus Maximus', 'Biceps Femoris'] },
+    'outdoor cycling': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Calves', 'Glutes', 'Hamstrings'], secondaryRegions: ['Gastrocnemius', 'Gluteus Maximus', 'Biceps Femoris'] },
+    'assault airbike / fan bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Shoulders', 'Chest', 'Back', 'Calves'], secondaryRegions: ['Front Deltoid', 'Mid Chest', 'Lats', 'Gastrocnemius'] },
+    'assault bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Shoulders', 'Chest', 'Back', 'Calves'], secondaryRegions: ['Front Deltoid', 'Mid Chest', 'Lats', 'Gastrocnemius'] },
+    'air bike': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Shoulders', 'Chest', 'Back', 'Calves'], secondaryRegions: ['Front Deltoid', 'Mid Chest', 'Lats', 'Gastrocnemius'] },
+    'stairmaster / stair climber': { primaryGroup: 'Glutes', primaryRegions: ['Gluteus Maximus'], secondaryGroups: ['Quadriceps', 'Calves', 'Hamstrings'], secondaryRegions: ['Rectus Femoris', 'Gastrocnemius', 'Soleus', 'Biceps Femoris'] },
+    'stairmaster': { primaryGroup: 'Glutes', primaryRegions: ['Gluteus Maximus'], secondaryGroups: ['Quadriceps', 'Calves', 'Hamstrings'], secondaryRegions: ['Rectus Femoris', 'Gastrocnemius', 'Soleus', 'Biceps Femoris'] },
+    'stair climber': { primaryGroup: 'Glutes', primaryRegions: ['Gluteus Maximus'], secondaryGroups: ['Quadriceps', 'Calves', 'Hamstrings'], secondaryRegions: ['Rectus Femoris', 'Gastrocnemius', 'Soleus', 'Biceps Femoris'] },
+    'rowing machine (indoor rower)': { primaryGroup: 'Back', primaryRegions: ['Lats', 'Upper Back'], secondaryGroups: ['Quadriceps', 'Hamstrings', 'Biceps'], secondaryRegions: ['Rectus Femoris', 'Biceps Femoris', 'Brachialis'] },
+    'rowing machine': { primaryGroup: 'Back', primaryRegions: ['Lats', 'Upper Back'], secondaryGroups: ['Quadriceps', 'Hamstrings', 'Biceps'], secondaryRegions: ['Rectus Femoris', 'Biceps Femoris', 'Brachialis'] },
+    'rower': { primaryGroup: 'Back', primaryRegions: ['Lats', 'Upper Back'], secondaryGroups: ['Quadriceps', 'Hamstrings', 'Biceps'], secondaryRegions: ['Rectus Femoris', 'Biceps Femoris', 'Brachialis'] },
+    'elliptical trainer / cross-trainer': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Glutes', 'Hamstrings', 'Calves'], secondaryRegions: ['Gluteus Maximus', 'Biceps Femoris', 'Soleus'] },
+    'elliptical': { primaryGroup: 'Quadriceps', primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'], secondaryGroups: ['Glutes', 'Hamstrings', 'Calves'], secondaryRegions: ['Gluteus Maximus', 'Biceps Femoris', 'Soleus'] },
+    'jump rope / skipping rope': { primaryGroup: 'Calves', primaryRegions: ['Gastrocnemius', 'Soleus'], secondaryGroups: ['Forearms', 'Shoulders'], secondaryRegions: ['Forearm Flexors', 'Side Deltoid'] },
+    'jump rope': { primaryGroup: 'Calves', primaryRegions: ['Gastrocnemius', 'Soleus'], secondaryGroups: ['Forearms', 'Shoulders'], secondaryRegions: ['Forearm Flexors', 'Side Deltoid'] }
 };
 
 const ALL_VALID_REGIONS = new Set(Object.values(MUSCLE_HIERARCHY).flat());
@@ -574,6 +609,40 @@ export const normalizeGroupName = (group) => {
  */
 const inferMusclesFromKeywords = (name) => {
     const n = (name || '').toLowerCase();
+
+    // 0. Cardio / Treadmill / Cycling / Endurance
+    if (n.includes('treadmill') || n.includes('running') || n.includes('jogging') || n.includes('sprint') || n.includes('cycling') || n.includes('bike') || n.includes('spin') || n.includes('elliptical')) {
+        return {
+            primaryGroup: 'Quadriceps',
+            primaryRegions: ['Rectus Femoris', 'Vastus Lateralis'],
+            secondaryGroups: ['Hamstrings', 'Calves', 'Glutes'],
+            secondaryRegions: ['Biceps Femoris', 'Gastrocnemius', 'Gluteus Maximus']
+        };
+    }
+    if (n.includes('stairmaster') || n.includes('stair climber') || n.includes('stairs')) {
+        return {
+            primaryGroup: 'Glutes',
+            primaryRegions: ['Gluteus Maximus'],
+            secondaryGroups: ['Quadriceps', 'Calves', 'Hamstrings'],
+            secondaryRegions: ['Rectus Femoris', 'Gastrocnemius', 'Soleus', 'Biceps Femoris']
+        };
+    }
+    if (n.includes('rowing') || n.includes('rower') || n.includes('ergometer')) {
+        return {
+            primaryGroup: 'Back',
+            primaryRegions: ['Lats', 'Upper Back'],
+            secondaryGroups: ['Quadriceps', 'Hamstrings', 'Biceps'],
+            secondaryRegions: ['Rectus Femoris', 'Biceps Femoris', 'Brachialis']
+        };
+    }
+    if (n.includes('jump rope') || n.includes('skipping')) {
+        return {
+            primaryGroup: 'Calves',
+            primaryRegions: ['Gastrocnemius', 'Soleus'],
+            secondaryGroups: ['Forearms', 'Shoulders'],
+            secondaryRegions: ['Forearm Flexors', 'Side Deltoid']
+        };
+    }
 
     // 1. Quads
     if (n.includes('quad') || n.includes('squat') || n.includes('leg press') || n.includes('hack') || n.includes('lunge') || n.includes('split squat') || n.includes('leg ext') || n.includes('sissy') || n.includes('step up') || n.includes('step-up')) {

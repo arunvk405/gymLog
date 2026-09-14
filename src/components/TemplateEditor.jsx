@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical, Target, Activity, Zap, BicepsFlexed, Shield, Sword, Info, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, ChevronDown, ChevronUp, Dumbbell, Search, X, RotateCcw, GripVertical, Target, Activity, Zap, BicepsFlexed, Shield, Sword, Info, Pencil, Flame, HeartPulse } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { DEFAULT_TEMPLATE } from '../data/program';
 import { ALL_MUSCLE_GROUPS, getMuscleRegions, normalizeExerciseMuscles, getRegionDisplayName, MUSCLE_GROUP_INFO } from '../data/muscles';
+import { EXERCISE_DATABASE } from '../data/exercises';
+import { isCardioExercise } from '../utils/analytics';
 import ExerciseDetailModal from './ExerciseDetailModal';
 import CreateExerciseModal from './CreateExerciseModal';
 import AnatomyViewer from './AnatomyViewer';
@@ -12,6 +14,7 @@ import { toast } from 'react-hot-toast';
 
 const getWorkoutIcon = (name = "") => {
     const n = name.toLowerCase();
+    if (n.includes('treadmill') || n.includes('running') || n.includes('jogging') || n.includes('sprint') || n.includes('walk') || n.includes('cycling') || n.includes('bike') || n.includes('spin') || n.includes('stair') || n.includes('rowing') || n.includes('elliptical') || n.includes('jump rope') || n.includes('cardio')) return <Flame size={16} color="#ec4899" />;
     if (n.includes('chest') || n.includes('bench')) return <Target size={16} color="var(--accent-color)" />;
     if (n.includes('back') || n.includes('row')) return <Activity size={16} color="var(--accent-color)" />;
     if (n.includes('leg') || n.includes('squat')) return <Zap size={16} color="var(--accent-color)" />;
@@ -19,6 +22,8 @@ const getWorkoutIcon = (name = "") => {
     if (n.includes('shoulder')) return <Shield size={16} color="var(--accent-color)" />;
     return <Sword size={16} color="var(--accent-color)" />;
 };
+
+const CARDIO_MODALITIES = ['Treadmill', 'Cycling', 'StairMaster', 'Rowing', 'Elliptical', 'Jump Rope'];
 
 const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
     const { user } = useAuth();
@@ -41,43 +46,81 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
         };
     }, []);
 
+    const groups = useMemo(() => {
+        return ['All', 'Cardio', ...ALL_MUSCLE_GROUPS];
+    }, []);
+
     const availableRegions = useMemo(() => {
         if (filterGroup === 'All') return [];
+        if (filterGroup === 'Cardio') return CARDIO_MODALITIES;
         return getMuscleRegions(filterGroup);
     }, [filterGroup]);
 
+    const activeDb = useMemo(() => {
+        const map = new Map();
+        // Always seed built-in database as base
+        EXERCISE_DATABASE.forEach(e => {
+            if (e && e.id) map.set(String(e.id), e);
+        });
+        // Overlay user custom or updated exercises
+        (exerciseDb || []).forEach(e => {
+            if (e && e.id) {
+                const existing = map.get(String(e.id)) || {};
+                map.set(String(e.id), { ...existing, ...e });
+            }
+        });
+        return Array.from(map.values());
+    }, [exerciseDb]);
+
     const filtered = useMemo(() => {
         // Show ONLY active exercises from Exercise Master
-        let list = (exerciseDb || []).filter(e => !e.hidden);
+        let list = activeDb.filter(e => !e.hidden);
 
         if (filterGroup !== 'All') {
-            list = list.filter(e => {
-                const norm = normalizeExerciseMuscles(e);
-                return norm.primaryGroup === filterGroup || norm.secondaryGroups.includes(filterGroup);
-            });
+            if (filterGroup === 'Cardio') {
+                list = list.filter(e => isCardioExercise(e));
+            } else {
+                list = list.filter(e => {
+                    const norm = normalizeExerciseMuscles(e);
+                    return norm.primaryGroup === filterGroup || norm.secondaryGroups.includes(filterGroup);
+                });
+            }
         }
+
         if (filterRegion !== 'All') {
-            list = list.filter(e => {
-                const norm = normalizeExerciseMuscles(e);
-                return norm.primaryRegions.includes(filterRegion) || norm.secondaryRegions.includes(filterRegion);
-            });
+            if (filterGroup === 'Cardio') {
+                const regLower = filterRegion.toLowerCase();
+                list = list.filter(e => {
+                    const n = (e.name || '').toLowerCase();
+                    const eq = (e.equipment || '').toLowerCase();
+                    return n.includes(regLower) || eq.includes(regLower);
+                });
+            } else {
+                list = list.filter(e => {
+                    const norm = normalizeExerciseMuscles(e);
+                    return norm.primaryRegions.includes(filterRegion) || norm.secondaryRegions.includes(filterRegion);
+                });
+            }
         }
+
         if (search.trim()) {
-            const q = search.toLowerCase();
+            const q = search.toLowerCase().trim();
             list = list.filter(e => {
                 const norm = normalizeExerciseMuscles(e);
-                return e.name.toLowerCase().includes(q) ||
-                    norm.primaryGroup.toLowerCase().includes(q) ||
-                    norm.primaryRegions.some(r => r.toLowerCase().includes(q)) ||
-                    norm.secondaryRegions.some(r => r.toLowerCase().includes(q));
+                const nameMatch = (e.name || '').toLowerCase().includes(q);
+                const equipMatch = (e.equipment || '').toLowerCase().includes(q);
+                const typeMatch = (e.type || '').toLowerCase().includes(q);
+                const groupMatch = (norm.primaryGroup || '').toLowerCase().includes(q);
+                const primaryRegionMatch = (norm.primaryRegions || []).some(r => r.toLowerCase().includes(q));
+                const secondaryRegionMatch = (norm.secondaryRegions || []).some(r => r.toLowerCase().includes(q));
+                const isCardio = isCardioExercise(e);
+                const cardioSearchMatch = (q.includes('cardio') || q.includes('endurance') || q.includes('aerobic') || q.includes('tread') || q.includes('run') || q.includes('cycle') || q.includes('bike') || q.includes('stair') || q.includes('row')) && isCardio;
+
+                return nameMatch || equipMatch || typeMatch || groupMatch || primaryRegionMatch || secondaryRegionMatch || cardioSearchMatch;
             });
         }
         return list;
-    }, [exerciseDb, search, filterGroup, filterRegion]);
-
-    const groups = useMemo(() => {
-        return ['All', ...ALL_MUSCLE_GROUPS];
-    }, []);
+    }, [activeDb, search, filterGroup, filterRegion]);
 
     return (
         <div style={{
@@ -237,7 +280,18 @@ const ExercisePicker = ({ exerciseDb, onSelect, onClose, onSaveExercise }) => {
                                     {getWorkoutIcon(ex.name)}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{ex.name}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{ex.name}</div>
+                                        {isCardioExercise(ex) && (
+                                            <span style={{
+                                                fontSize: '0.6rem', fontWeight: 900, color: '#ffffff',
+                                                background: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+                                                padding: '1px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                                            }}>
+                                                CARDIO
+                                            </span>
+                                        )}
+                                    </div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
                                         {/* Primary Muscle Badge */}
                                         <span style={{
@@ -642,21 +696,70 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel, onSaveExercise
                                                                     zIndex: snapshot.isDragging ? 1000 : 1
                                                                 }}
                                                             >
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                                        <div {...provided.dragHandleProps} style={{ padding: '0 4px', cursor: 'grab', color: 'var(--text-secondary)', opacity: 0.5 }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', gap: '8px' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
+                                                                        <div {...provided.dragHandleProps} style={{ padding: '0 4px', cursor: 'grab', color: 'var(--text-secondary)', opacity: 0.5, flexShrink: 0 }}>
                                                                             <GripVertical size={20} />
                                                                         </div>
-                                                                        <div className="glass-panel" style={{ padding: '6px', borderRadius: '8px' }}>
+                                                                        <div className="glass-panel" style={{ padding: '6px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                             {getWorkoutIcon(ex.name)}
                                                                         </div>
                                                                         <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.2px' }}>
                                                                             {ex.name}
                                                                         </span>
+                                                                        {isCardioExercise(ex) && (
+                                                                            <span style={{
+                                                                                fontSize: '0.6rem', fontWeight: 900, color: '#ffffff',
+                                                                                background: 'linear-gradient(135deg, #ec4899, #f43f5e)',
+                                                                                padding: '1px 6px', borderRadius: '4px', letterSpacing: '0.5px'
+                                                                            }}>
+                                                                                CARDIO
+                                                                            </span>
+                                                                        )}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="icon-btn"
+                                                                            onClick={() => setInspectingExercise(ex)}
+                                                                            style={{
+                                                                                width: '24px',
+                                                                                height: '24px',
+                                                                                background: 'rgba(56, 189, 248, 0.15)',
+                                                                                border: '1px solid rgba(56, 189, 248, 0.35)',
+                                                                                borderRadius: '50%',
+                                                                                color: '#38bdf8',
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                cursor: 'pointer',
+                                                                                padding: 0,
+                                                                                flexShrink: 0,
+                                                                                boxShadow: 'none'
+                                                                            }}
+                                                                            title="Inspect Target Muscle Anatomy"
+                                                                        >
+                                                                            <Info size={13} />
+                                                                        </button>
                                                                     </div>
                                                                     <button
+                                                                        type="button"
+                                                                        className="icon-btn"
                                                                         onClick={() => removeExercise(dayIdx, exIdx)}
-                                                                        style={{ padding: '4px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)' }}
+                                                                        style={{
+                                                                            width: '28px',
+                                                                            height: '28px',
+                                                                            background: 'rgba(239, 68, 68, 0.1)',
+                                                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                                            borderRadius: '8px',
+                                                                            color: 'var(--error-color)',
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            cursor: 'pointer',
+                                                                            padding: 0,
+                                                                            flexShrink: 0,
+                                                                            boxShadow: 'none'
+                                                                        }}
+                                                                        title="Remove exercise from template"
                                                                     >
                                                                         <Trash2 size={14} />
                                                                     </button>
@@ -713,32 +816,45 @@ const TemplateEditor = ({ template, exerciseDb, onSave, onCancel, onSaveExercise
                                                                     })()}
                                                                 </div>
                                                                 
-                                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))', gap: '0.5rem', marginTop: '0.6rem' }}>
-                                                                    <div>
-                                                                        <label style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.7 }}>SETS</label>
-                                                                        <input type="number" min="1" max="10" value={ex.sets}
-                                                                            onChange={(e) => updateExercise(dayIdx, exIdx, 'sets', parseInt(e.target.value) || 1)}
-                                                                            style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.7 }}>REPS</label>
-                                                                        <input type="number" min="1" max="100" value={ex.reps}
-                                                                            onChange={(e) => updateExercise(dayIdx, exIdx, 'reps', parseInt(e.target.value) || 1)}
-                                                                            style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.7 }}>WEIGHT</label>
-                                                                        <input type="number" min="0" step="0.5" value={ex.startWeight}
-                                                                            onChange={(e) => updateExercise(dayIdx, exIdx, 'startWeight', parseFloat(e.target.value) || 0)}
-                                                                            style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.7 }}>+KG</label>
-                                                                        <input type="number" min="0" step="0.5" value={ex.progression}
-                                                                            onChange={(e) => updateExercise(dayIdx, exIdx, 'progression', parseFloat(e.target.value) || 0)}
-                                                                            style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
-                                                                    </div>
-                                                                </div>
+                                                                {(() => {
+                                                                    const isCardio = isCardioExercise(ex);
+                                                                    return (
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(64px, 1fr))', gap: '0.5rem', marginTop: '0.6rem' }}>
+                                                                            <div>
+                                                                                <label style={{ fontSize: '0.6rem', color: isCardio ? '#ec4899' : 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.85 }}>
+                                                                                    {isCardio ? 'INTERVALS' : 'SETS'}
+                                                                                </label>
+                                                                                <input type="number" min="1" max="15" value={ex.sets}
+                                                                                    onChange={(e) => updateExercise(dayIdx, exIdx, 'sets', parseInt(e.target.value) || 1)}
+                                                                                    style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label style={{ fontSize: '0.6rem', color: isCardio ? '#38bdf8' : 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.85 }}>
+                                                                                    {isCardio ? 'TIME (MIN)' : 'REPS'}
+                                                                                </label>
+                                                                                <input type="number" min="1" max="180" value={ex.reps}
+                                                                                    onChange={(e) => updateExercise(dayIdx, exIdx, 'reps', parseInt(e.target.value) || 1)}
+                                                                                    style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label style={{ fontSize: '0.6rem', color: isCardio ? '#f59e0b' : 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.85 }}>
+                                                                                    {isCardio ? 'SPEED / LVL' : 'WEIGHT (KG)'}
+                                                                                </label>
+                                                                                <input type="number" min="0" step="0.5" value={ex.startWeight}
+                                                                                    onChange={(e) => updateExercise(dayIdx, exIdx, 'startWeight', parseFloat(e.target.value) || 0)}
+                                                                                    style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label style={{ fontSize: '0.6rem', color: isCardio ? '#a855f7' : 'var(--text-secondary)', fontWeight: 800, display: 'block', marginBottom: '6px', textTransform: 'uppercase', opacity: 0.85 }}>
+                                                                                    {isCardio ? '+MIN' : '+KG'}
+                                                                                </label>
+                                                                                <input type="number" min="0" step="0.5" value={ex.progression}
+                                                                                    onChange={(e) => updateExercise(dayIdx, exIdx, 'progression', parseFloat(e.target.value) || 0)}
+                                                                                    style={{ textAlign: 'center', fontSize: '1rem', padding: '0.6rem', borderRadius: '10px', fontWeight: 700, background: 'var(--panel-color)' }} />
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         )}
                                                     </Draggable>

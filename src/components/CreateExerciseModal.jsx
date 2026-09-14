@@ -200,11 +200,12 @@ const CreateExerciseModal = ({ onSave, onClose, exerciseToEdit = null }) => {
                             >
                                 <option value="accessory">Accessory</option>
                                 <option value="compound">Compound</option>
+                                <option value="cardio">Cardio</option>
                             </select>
                         </div>
                         <div>
-                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                                +KG PROGRESSION
+                            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: type === 'cardio' ? '#a855f7' : 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                                {type === 'cardio' ? '+MIN PROGRESSION' : '+KG PROGRESSION'}
                             </label>
                             <input
                                 type="number"
@@ -223,8 +224,8 @@ const CreateExerciseModal = ({ onSave, onClose, exerciseToEdit = null }) => {
                     {/* Default Specs Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))', gap: '0.5rem', marginBottom: '1.25rem' }}>
                         <div>
-                            <label style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                                DEFAULT SETS
+                            <label style={{ fontSize: '0.6rem', fontWeight: 800, color: type === 'cardio' ? '#ec4899' : 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                                {type === 'cardio' ? 'INTERVALS / SETS' : 'DEFAULT SETS'}
                             </label>
                             <input
                                 type="number"
@@ -240,13 +241,13 @@ const CreateExerciseModal = ({ onSave, onClose, exerciseToEdit = null }) => {
                             />
                         </div>
                         <div>
-                            <label style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                                DEFAULT REPS
+                            <label style={{ fontSize: '0.6rem', fontWeight: 800, color: type === 'cardio' ? '#38bdf8' : 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                                {type === 'cardio' ? 'TIME (MINS)' : 'DEFAULT REPS'}
                             </label>
                             <input
                                 type="number"
                                 min="1"
-                                max="100"
+                                max="180"
                                 value={defaultReps}
                                 onChange={(e) => setDefaultReps(e.target.value)}
                                 style={{
@@ -257,8 +258,8 @@ const CreateExerciseModal = ({ onSave, onClose, exerciseToEdit = null }) => {
                             />
                         </div>
                         <div>
-                            <label style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                                START WEIGHT (KG)
+                            <label style={{ fontSize: '0.6rem', fontWeight: 800, color: type === 'cardio' ? '#f59e0b' : 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                                {type === 'cardio' ? 'SPEED / LEVEL' : 'START WEIGHT (KG)'}
                             </label>
                             <input
                                 type="number"

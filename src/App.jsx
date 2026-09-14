@@ -10,7 +10,7 @@ import Onboarding from './components/Onboarding';
 import TemplateEditor from './components/TemplateEditor';
 import WeightLogModal from './components/WeightLogModal';
 import { useAuth } from './context/AuthContext';
-import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises, fetchWeightHistory, logWeightHistory, saveExerciseToStorage, deleteExerciseFromStorage, resetExercisesToDefaultStorage } from './utils/storage';
+import { fetchHistory, fetchProfile, fetchTemplates, saveTemplate, deleteTemplate, fetchExercises, seedExercises, fetchWeightHistory, logWeightHistory, updateWeightLog, deleteWeightLog, saveExerciseToStorage, deleteExerciseFromStorage, resetExercisesToDefaultStorage } from './utils/storage';
 import { Toaster, toast } from 'react-hot-toast';
 import { DEFAULT_TEMPLATE } from './data/program';
 import { EXERCISE_DATABASE } from './data/exercises';
@@ -36,9 +36,10 @@ function App() {
     localStorage.getItem('bulkbro-active-template') || 'default'
   );
   const [editingTemplate, setEditingTemplate] = useState(null); // null = not editing, {} = new, {data} = edit
-  const [exerciseDb, setExerciseDb] = useState([]);
+  const [exerciseDb, setExerciseDb] = useState(() => EXERCISE_DATABASE);
   const [weightHistory, setWeightHistory] = useState([]);
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [editingWeightLog, setEditingWeightLog] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -121,22 +122,52 @@ function App() {
       setProfile(null);
       setWeightHistory([]);
       setTemplates([DEFAULT_TEMPLATE]);
+      setExerciseDb(EXERCISE_DATABASE);
     }
   }, [user]);
 
-  const handleSaveWeight = async (weight, bodyfat) => {
+  const handleSaveWeight = async (data) => {
     try {
-      await logWeightHistory(user.uid, weight, bodyfat);
+      if (typeof data === 'object' && data.id) {
+        // Edit existing log
+        await updateWeightLog(data.id, data, user.uid);
+        toast.success("Weight log updated!");
+      } else {
+        // New weight log
+        const w = typeof data === 'object' ? data.weight : data;
+        const bf = typeof data === 'object' ? data.bodyfat : 0;
+        const customDate = typeof data === 'object' ? data.customDate : undefined;
+        await logWeightHistory(user.uid, w, bf, customDate);
+        toast.success("Progress logged! Consistency is key.");
+      }
+
       const updatedWh = await fetchWeightHistory(user.uid);
-      setWeightHistory(updatedWh);
+      setWeightHistory(updatedWh || []);
 
       const updatedProfile = await fetchProfile(user.uid);
       setProfile(updatedProfile);
 
       setShowWeightModal(false);
-      toast.success("Progress logged! Consistency is key.");
+      setEditingWeightLog(null);
     } catch (err) {
       toast.error("Failed to save weight");
+    }
+  };
+
+  const handleDeleteWeight = async (logId) => {
+    try {
+      await deleteWeightLog(logId, user.uid);
+      const updatedWh = await fetchWeightHistory(user.uid);
+      setWeightHistory(updatedWh || []);
+
+      const updatedProfile = await fetchProfile(user.uid);
+      setProfile(updatedProfile);
+
+      setShowWeightModal(false);
+      setEditingWeightLog(null);
+      toast.success("Weight log deleted");
+    } catch (err) {
+      toast.error("Failed to delete weight log");
     }
   };
 
@@ -293,7 +324,15 @@ function App() {
           profile={profile}
           theme={theme}
           weightHistory={weightHistory}
-          onLogWeight={() => setShowWeightModal(true)}
+          onLogWeight={() => {
+            setEditingWeightLog(null);
+            setShowWeightModal(true);
+          }}
+          onEditWeight={(entry) => {
+            setEditingWeightLog(entry);
+            setShowWeightModal(true);
+          }}
+          onDeleteWeight={handleDeleteWeight}
         />;
       case 'profile':
         return (
@@ -431,10 +470,15 @@ function App() {
 
       {showWeightModal && (
         <WeightLogModal
+          initialData={editingWeightLog}
           currentWeight={profile?.bodyweight}
           currentBodyfat={profile?.bodyfat}
           onSave={handleSaveWeight}
-          onCancel={() => setShowWeightModal(false)}
+          onDelete={handleDeleteWeight}
+          onCancel={() => {
+            setShowWeightModal(false);
+            setEditingWeightLog(null);
+          }}
         />
       )}
 
