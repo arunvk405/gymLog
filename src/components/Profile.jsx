@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { saveProfile } from '../utils/storage';
-import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2, Dumbbell, Palette, Download, FileText } from 'lucide-react';
+import { LogOut, UserCircle, ChefHat, Camera, Upload, Loader2, Check, X, Moon, Sun, Share2, Dumbbell, Palette, Download, FileText, Timer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ImageCropper from './ImageCropper';
 import ExerciseMasterModal from './ExerciseMasterModal';
@@ -311,6 +311,17 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
                                 <option value="strength">Pure Strength</option>
                             </select>
                         </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Default Rest Timer</label>
+                            <select value={tempProfile.restTimer || 90} onChange={(e) => setTempProfile({ ...tempProfile, restTimer: parseInt(e.target.value) })}>
+                                <option value={30}>30 Seconds (HIIT / Fast)</option>
+                                <option value={60}>60 Seconds (Hypertrophy / Pump)</option>
+                                <option value={90}>90 Seconds (Standard / Balanced)</option>
+                                <option value={120}>120 Seconds (2 min - Hypertrophy/Strength)</option>
+                                <option value={180}>180 Seconds (3 min - Heavy Compound)</option>
+                                <option value={240}>240 Seconds (4 min - Pure Powerlifting)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
@@ -323,6 +334,60 @@ const Profile = ({ profile, setProfile, theme, toggleTheme, accentTheme, onAccen
                     <button className="secondary" onClick={() => setEditing(true)} style={{ width: '100%', marginBottom: '1.5rem' }}>
                         Edit Body Stats
                     </button>
+
+                    {/* REST TIMER PREFERENCES */}
+                    <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+                            <Timer size={18} color="var(--accent-color)" />
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Default Rest Timer</h3>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                            Timer automatically counts down between sets with audio & haptic alerts.
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                            {[
+                                { label: '30s', val: 30 },
+                                { label: '60s', val: 60 },
+                                { label: '90s', val: 90 },
+                                { label: '2 min', val: 120 },
+                                { label: '3 min', val: 180 },
+                                { label: '4 min', val: 240 }
+                            ].map(opt => {
+                                const isSelected = (profile.restTimer || 90) === opt.val;
+                                return (
+                                    <button
+                                        key={opt.val}
+                                        type="button"
+                                        onClick={async () => {
+                                            const updated = { ...profile, restTimer: opt.val };
+                                            setProfile(updated);
+                                            setTempProfile(updated);
+                                            try {
+                                                await saveProfile(updated, user?.uid);
+                                                toast.success(`Rest timer set to ${opt.label}`);
+                                            } catch (err) {
+                                                toast.error("Failed to update rest timer");
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '12px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 800,
+                                            background: isSelected ? 'var(--accent-color)' : 'var(--muted-color)',
+                                            border: isSelected ? '1px solid var(--accent-color)' : '1px solid var(--border-color)',
+                                            color: isSelected ? 'white' : 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isSelected ? '0 2px 10px rgba(56, 189, 248, 0.3)' : 'none'
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     {/* APP THEME & ACCENT COLOR PREFERENCES */}
                     <div className="panel" style={{ background: 'var(--panel-color)', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>

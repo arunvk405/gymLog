@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { format, isToday } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote, Calculator, Info } from 'lucide-react';
+import { GripVertical, Check, ArrowLeft, Loader2, Plus, CheckCircle2, Calendar, Trash2, Pencil, ChevronDown, ChevronDownSquare, X, Search, Activity, Zap, Target, BicepsFlexed, Shield, Sword, Crown, Quote, Calculator, Info, Timer } from 'lucide-react';
 import { MOTIVATIONAL_QUOTES } from '../data/motivation';
 import CustomDatePicker from './CustomDatePicker';
 import PlateCalculatorModal from './PlateCalculatorModal';
@@ -221,6 +221,23 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                 source.connect(ctx.destination);
                 source.start(0);
             } else {
+                // Synthesize a pleasant dual-tone chime fallback
+                try {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                } catch (synthErr) {
+                    console.warn('Synth beep fallback failed', synthErr);
+                }
+
                 // Buffer not loaded yet — try to load and play after a short delay
                 loadBeepBuffer().then(() => {
                     if (beepBuffer) {
@@ -231,6 +248,14 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                     }
                 });
             }
+
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+            toast.success("Rest complete! Ready for next set! 🏋️‍♂️", {
+                icon: '⏰',
+                duration: 4000
+            });
         } catch (e) {
             console.error('Audio beep failed', e);
         }
@@ -254,14 +279,40 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
         return () => clearInterval(timer);
     }, [timerEndTime]);
 
-    const startTimer = (exIdx, setIdx) => {
+    const startTimer = (exIdx, setIdx, customDuration) => {
         initAudio(); // Unlock audio on user interaction
 
-        const duration = profile?.restTimer || 90;
+        const duration = customDuration || profile?.restTimer || 90;
         setTimeLeft(duration);
         setTotalRestTime(duration);
         setTimerLocation({ exIdx, setIdx });
         setTimerEndTime(Date.now() + duration * 1000);
+    };
+
+    const adjustTimer = (seconds) => {
+        if (!timerEndTime) return;
+        const currentRemaining = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
+        const newRemaining = currentRemaining + seconds;
+
+        if (newRemaining <= 0) {
+            setTimerEndTime(null);
+            setTimeLeft(0);
+            playBeep();
+        } else {
+            const newEndTime = Date.now() + newRemaining * 1000;
+            setTimerEndTime(newEndTime);
+            setTimeLeft(newRemaining);
+            if (seconds > 0) {
+                setTotalRestTime(prev => Math.max(newRemaining, (prev || 0) + seconds));
+            } else {
+                setTotalRestTime(prev => Math.max(newRemaining, prev || newRemaining));
+            }
+        }
+    };
+
+    const stopTimer = () => {
+        setTimerEndTime(null);
+        setTimeLeft(0);
     };
 
     const updateSet = (exerciseIndex, setIndex, field, value) => {
@@ -517,10 +568,92 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                             <ArrowLeft size={18} />
                         </button>
 
-                        <div style={{ textAlign: 'center', flex: 1, padding: '0 8px' }}>
+                        <div style={{ textAlign: 'center', flex: 1, padding: '0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <h2 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workout.name}</h2>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 800, marginTop: '1px' }}>
-                                {formatTime(elapsedTime)}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.75rem', color: timerEndTime ? 'var(--text-secondary)' : 'var(--accent-color)', fontWeight: 800 }}>
+                                    {formatTime(elapsedTime)}
+                                </span>
+                                {timerEndTime && (
+                                    <div style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        background: 'rgba(56, 189, 248, 0.15)',
+                                        border: '1px solid var(--accent-color)',
+                                        padding: '1px 8px',
+                                        borderRadius: '20px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 900,
+                                        color: 'var(--accent-color)',
+                                        boxShadow: '0 0 10px rgba(56, 189, 248, 0.25)'
+                                    }}>
+                                        <Timer size={11} className="icon-pulse" />
+                                        <span>REST {formatTime(timeLeft)}</span>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                adjustTimer(-15);
+                                            }}
+                                            style={{
+                                                background: 'var(--panel-color)',
+                                                border: '1px solid var(--border-color)',
+                                                color: 'var(--text-secondary)',
+                                                padding: '1px 5px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.6rem',
+                                                fontWeight: 900,
+                                                cursor: 'pointer',
+                                                marginLeft: '2px'
+                                            }}
+                                            title="Subtract 15 seconds"
+                                        >
+                                            -15s
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                adjustTimer(30);
+                                            }}
+                                            style={{
+                                                background: 'var(--accent-color)',
+                                                border: 'none',
+                                                color: 'white',
+                                                padding: '1px 5px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.6rem',
+                                                fontWeight: 900,
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Add 30 seconds"
+                                        >
+                                            +30s
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                stopTimer();
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--text-secondary)',
+                                                padding: '0 2px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 900,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center'
+                                            }}
+                                            title="Skip rest"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -828,119 +961,238 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                                                             </div>
 
                                                             <div>
-                                                                {ex.sets.map((set, setIdx) => (
-                                                                    <React.Fragment key={set.id}>
-                                                                        <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', alignItems: 'center', marginBottom: '1.2rem' }}>
-                                                                            <span style={{ color: set.isWarmup ? '#eab308' : 'var(--text-secondary)', fontWeight: 800, fontSize: '0.9rem' }}>
-                                                                                {set.isWarmup ? `W` : setIdx + 1 - ex.sets.filter(s => s.isWarmup).length}
-                                                                            </span>
+                                                                {ex.sets.map((set, setIdx) => {
+                                                                    const isTimerActiveForThisSet = Boolean(timerEndTime && timerLocation.exIdx === exIdx && timerLocation.setIdx === setIdx);
+                                                                    return (
+                                                                        <React.Fragment key={set.id}>
+                                                                            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 44px 28px', gap: '0.4rem', alignItems: 'center', marginBottom: isTimerActiveForThisSet ? '0.5rem' : '1.2rem' }}>
+                                                                                <span
+                                                                                    onClick={() => {
+                                                                                        if (isTimerActiveForThisSet) {
+                                                                                            stopTimer();
+                                                                                        } else {
+                                                                                            startTimer(exIdx, setIdx);
+                                                                                        }
+                                                                                    }}
+                                                                                    style={{
+                                                                                        color: isTimerActiveForThisSet ? 'var(--accent-color)' : (set.isWarmup ? '#eab308' : 'var(--text-secondary)'),
+                                                                                        fontWeight: 800,
+                                                                                        fontSize: '0.9rem',
+                                                                                        cursor: 'pointer'
+                                                                                    }}
+                                                                                    title={isTimerActiveForThisSet ? "Stop rest timer" : "Start rest timer for this set"}
+                                                                                >
+                                                                                    {set.isWarmup ? `W` : setIdx + 1 - ex.sets.filter(s => s.isWarmup).length}
+                                                                                </span>
 
-                                                                            <div style={{ position: 'relative' }}>
-                                                                                <input
-                                                                                    type="number"
-                                                                                    inputMode="decimal"
-                                                                                    value={set.weight}
-                                                                                    onFocus={(e) => e.target.select()}
-                                                                                    onChange={(e) => {
-                                                                                        const val = e.target.value;
-                                                                                        updateSet(exIdx, setIdx, 'weight', val === '' ? '' : parseFloat(val));
-                                                                                    }}
-                                                                                    onBlur={(e) => {
-                                                                                        if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'weight', 0);
-                                                                                    }}
-                                                                                    step="0.5"
-                                                                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
-                                                                                />
-                                                                                <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                                                                                    {set.prevWeight ? (isCardio ? `LAST: Lvl ${set.prevWeight}` : `LAST: ${set.prevWeight}kg`) : ''}
-                                                                                </div>
-                                                                                {!isCardio && (
-                                                                                    <button
-                                                                                        onClick={() => setActivePlateCalc({ exIdx, setIdx, weight: set.weight })}
-                                                                                        style={{
-                                                                                            position: 'absolute',
-                                                                                            right: '6px',
-                                                                                            bottom: '6px',
-                                                                                            background: 'none',
-                                                                                            border: 'none',
-                                                                                            cursor: 'pointer',
-                                                                                            padding: '2px',
-                                                                                            color: 'var(--text-secondary)',
-                                                                                            opacity: 0.5,
-                                                                                            boxShadow: 'none',
-                                                                                            width: '18px',
-                                                                                            height: '18px',
-                                                                                            display: 'flex',
-                                                                                            alignItems: 'center',
-                                                                                            justifyContent: 'center'
+                                                                                <div style={{ position: 'relative' }}>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        inputMode="decimal"
+                                                                                        value={set.weight}
+                                                                                        onFocus={(e) => e.target.select()}
+                                                                                        onChange={(e) => {
+                                                                                            const val = e.target.value;
+                                                                                            updateSet(exIdx, setIdx, 'weight', val === '' ? '' : parseFloat(val));
                                                                                         }}
-                                                                                        title="Plate Calculator"
-                                                                                    >
-                                                                                        <Calculator size={12} />
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-
-                                                                            <div style={{ position: 'relative' }}>
-                                                                                <input
-                                                                                    type="number"
-                                                                                    inputMode="numeric"
-                                                                                    pattern="[0-9]*"
-                                                                                    value={set.reps}
-                                                                                    onFocus={(e) => e.target.select()}
-                                                                                    onChange={(e) => {
-                                                                                        const val = e.target.value;
-                                                                                        updateSet(exIdx, setIdx, 'reps', val === '' ? '' : parseInt(val));
-                                                                                    }}
-                                                                                    onBlur={(e) => {
-                                                                                        if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'reps', isCardio ? 20 : 0);
-                                                                                    }}
-                                                                                    style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)', width: '100%' }}
-                                                                                />
-                                                                                <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                                                                                    {set.prevReps ? (isCardio ? `LAST: ${set.prevReps}m` : `LAST: ${set.prevReps}`) : ''}
+                                                                                        onBlur={(e) => {
+                                                                                            if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'weight', 0);
+                                                                                        }}
+                                                                                        step="0.5"
+                                                                                        style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)' }}
+                                                                                    />
+                                                                                    <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                                                                                        {set.prevWeight ? (isCardio ? `LAST: Lvl ${set.prevWeight}` : `LAST: ${set.prevWeight}kg`) : ''}
+                                                                                    </div>
+                                                                                    {!isCardio && (
+                                                                                        <button
+                                                                                            onClick={() => setActivePlateCalc({ exIdx, setIdx, weight: set.weight })}
+                                                                                            style={{
+                                                                                                position: 'absolute',
+                                                                                                right: '6px',
+                                                                                                bottom: '6px',
+                                                                                                background: 'none',
+                                                                                                border: 'none',
+                                                                                                cursor: 'pointer',
+                                                                                                padding: '2px',
+                                                                                                color: 'var(--text-secondary)',
+                                                                                                opacity: 0.5,
+                                                                                                boxShadow: 'none',
+                                                                                                width: '18px',
+                                                                                                height: '18px',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                justifyContent: 'center'
+                                                                                            }}
+                                                                                            title="Plate Calculator"
+                                                                                        >
+                                                                                            <Calculator size={12} />
+                                                                                        </button>
+                                                                                    )}
                                                                                 </div>
+
+                                                                                <div style={{ position: 'relative' }}>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        inputMode="numeric"
+                                                                                        pattern="[0-9]*"
+                                                                                        value={set.reps}
+                                                                                        onFocus={(e) => e.target.select()}
+                                                                                        onChange={(e) => {
+                                                                                            const val = e.target.value;
+                                                                                            updateSet(exIdx, setIdx, 'reps', val === '' ? '' : parseInt(val));
+                                                                                        }}
+                                                                                        onBlur={(e) => {
+                                                                                            if (e.target.value === '' || isNaN(e.target.value)) updateSet(exIdx, setIdx, 'reps', isCardio ? 20 : 0);
+                                                                                        }}
+                                                                                        style={{ textAlign: 'center', fontWeight: 800, padding: '0.8rem 0', fontSize: '1.1rem', background: 'var(--muted-color)', width: '100%' }}
+                                                                                    />
+                                                                                    <div style={{ position: 'absolute', top: '-16px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                                                                                        {set.prevReps ? (isCardio ? `LAST: ${set.prevReps}m` : `LAST: ${set.prevReps}`) : ''}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <button
+                                                                                    onClick={() => toggleSet(exIdx, setIdx)}
+                                                                                    style={{
+                                                                                        backgroundColor: set.completed ? 'var(--success-color)' : 'transparent',
+                                                                                        border: `2px solid ${set.completed ? 'var(--success-color)' : 'var(--border-color)'}`,
+                                                                                        padding: '0.4rem',
+                                                                                        borderRadius: '50%',
+                                                                                        cursor: 'pointer',
+                                                                                        width: '32px',
+                                                                                        height: '32px',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center',
+                                                                                        justifyContent: 'center',
+                                                                                        color: set.completed ? 'white' : 'transparent',
+                                                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                                                        boxShadow: set.completed ? '0 0 12px rgba(34, 197, 94, 0.4)' : 'none',
+                                                                                        transform: set.completed ? 'scale(1.05)' : 'scale(1)'
+                                                                                    }}
+                                                                                >
+                                                                                    <Check size={18} strokeWidth={3} />
+                                                                                </button>
+
+                                                                                <button
+                                                                                    onClick={() => deleteSet(exIdx, setIdx)}
+                                                                                    disabled={ex.sets.length <= 1}
+                                                                                    style={{
+                                                                                        background: 'none', border: 'none',
+                                                                                        color: 'var(--text-secondary)',
+                                                                                        cursor: ex.sets.length <= 1 ? 'not-allowed' : 'pointer',
+                                                                                        opacity: ex.sets.length <= 1 ? 0.2 : 0.6,
+                                                                                        padding: '4px',
+                                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                                    }}
+                                                                                >
+                                                                                    <Trash2 size={16} />
+                                                                                </button>
                                                                             </div>
 
-                                                                            <button
-                                                                                onClick={() => toggleSet(exIdx, setIdx)}
-                                                                                style={{
-                                                                                    backgroundColor: set.completed ? 'var(--success-color)' : 'transparent',
-                                                                                    border: `2px solid ${set.completed ? 'var(--success-color)' : 'var(--border-color)'}`,
-                                                                                    padding: '0.4rem',
-                                                                                    borderRadius: '50%',
-                                                                                    cursor: 'pointer',
-                                                                                    width: '32px',
-                                                                                    height: '32px',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    justifyContent: 'center',
-                                                                                    color: set.completed ? 'white' : 'transparent',
-                                                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                                                    boxShadow: set.completed ? '0 0 12px rgba(34, 197, 94, 0.4)' : 'none',
-                                                                                    transform: set.completed ? 'scale(1.05)' : 'scale(1)'
-                                                                                }}
-                                                                            >
-                                                                                <Check size={18} strokeWidth={3} />
-                                                                            </button>
+                                                                            {/* INLINE REST TIMER UI */}
+                                                                            {isTimerActiveForThisSet && (
+                                                                                <div style={{
+                                                                                    background: 'var(--panel-color)',
+                                                                                    borderRadius: '16px',
+                                                                                    padding: '0.8rem 1rem',
+                                                                                    marginBottom: '1.2rem',
+                                                                                    border: '1.5px solid var(--accent-color)',
+                                                                                    boxShadow: '0 6px 20px rgba(56, 189, 248, 0.18)',
+                                                                                    animation: 'slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                                                                                }}>
+                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                                            <div style={{
+                                                                                                width: '32px', height: '32px', borderRadius: '50%',
+                                                                                                background: 'rgba(56, 189, 248, 0.15)',
+                                                                                                border: '1px solid var(--accent-color)',
+                                                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                                                            }}>
+                                                                                                <Timer size={16} color="var(--accent-color)" className="icon-pulse" />
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent-color)', letterSpacing: '0.5px', lineHeight: 1.1 }}>
+                                                                                                    {formatTime(timeLeft)}
+                                                                                                </div>
+                                                                                                <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                                                    Resting after Set {set.isWarmup ? 'W' : (setIdx + 1 - ex.sets.filter(s => s.isWarmup).length)}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
 
-                                                                            <button
-                                                                                onClick={() => deleteSet(exIdx, setIdx)}
-                                                                                disabled={ex.sets.length <= 1}
-                                                                                style={{
-                                                                                    background: 'none', border: 'none',
-                                                                                    color: 'var(--text-secondary)',
-                                                                                    cursor: ex.sets.length <= 1 ? 'not-allowed' : 'pointer',
-                                                                                    opacity: ex.sets.length <= 1 ? 0.2 : 0.6,
-                                                                                    padding: '4px',
-                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                                                }}
-                                                                            >
-                                                                                <Trash2 size={16} />
-                                                                            </button>
-                                                                        </div>
-                                                                    </React.Fragment>
-                                                                ))}
+                                                                                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => adjustTimer(-15)}
+                                                                                                style={{
+                                                                                                    padding: '0.35rem 0.6rem', borderRadius: '8px',
+                                                                                                    background: 'var(--muted-color)', border: '1px solid var(--border-color)',
+                                                                                                    color: 'var(--text-secondary)', fontWeight: 800, fontSize: '0.7rem',
+                                                                                                    cursor: 'pointer'
+                                                                                                }}
+                                                                                                title="Subtract 15 seconds"
+                                                                                            >
+                                                                                                -15s
+                                                                                            </button>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => adjustTimer(30)}
+                                                                                                style={{
+                                                                                                    padding: '0.35rem 0.6rem', borderRadius: '8px',
+                                                                                                    background: 'var(--muted-color)', border: '1px solid var(--border-color)',
+                                                                                                    color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.7rem',
+                                                                                                    cursor: 'pointer'
+                                                                                                }}
+                                                                                                title="Add 30 seconds"
+                                                                                            >
+                                                                                                +30s
+                                                                                            </button>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => adjustTimer(60)}
+                                                                                                style={{
+                                                                                                    padding: '0.35rem 0.6rem', borderRadius: '8px',
+                                                                                                    background: 'var(--muted-color)', border: '1px solid var(--border-color)',
+                                                                                                    color: 'var(--accent-color)', fontWeight: 800, fontSize: '0.7rem',
+                                                                                                    cursor: 'pointer'
+                                                                                                }}
+                                                                                                title="Add 60 seconds"
+                                                                                            >
+                                                                                                +60s
+                                                                                            </button>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={stopTimer}
+                                                                                                style={{
+                                                                                                    padding: '0.35rem 0.75rem', borderRadius: '8px',
+                                                                                                    background: 'var(--accent-color)', border: 'none',
+                                                                                                    color: 'white', fontWeight: 800, fontSize: '0.7rem',
+                                                                                                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px',
+                                                                                                    boxShadow: '0 2px 8px rgba(56, 189, 248, 0.3)'
+                                                                                                }}
+                                                                                                title="Skip rest period"
+                                                                                            >
+                                                                                                SKIP
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {/* Progress Bar */}
+                                                                                    <div style={{ height: '4px', background: 'rgba(0,0,0,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                                                        <div style={{
+                                                                                            height: '100%',
+                                                                                            background: 'var(--accent-gradient)',
+                                                                                            width: `${Math.min(100, Math.max(0, (timeLeft / (totalRestTime || 1)) * 100))}%`,
+                                                                                            transition: 'width 0.25s linear',
+                                                                                            borderRadius: '4px'
+                                                                                        }} />
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </React.Fragment>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </>
                                                     );
@@ -977,6 +1229,98 @@ const WorkoutLogger = ({ programDay, history, onFinish, onCancel, profile, exerc
                         <Plus size={20} /> Add Exercise
                     </button>
                 </div>
+
+                {/* Floating Rest Timer Dock (Accessible when scrolling anywhere) */}
+                {timerEndTime && (
+                    <div style={{
+                        position: 'fixed',
+                        bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))',
+                        left: '1rem',
+                        right: '1rem',
+                        maxWidth: '800px',
+                        margin: '0 auto',
+                        zIndex: 1000,
+                        background: 'var(--panel-color)',
+                        border: '1.5px solid var(--accent-color)',
+                        borderRadius: '16px',
+                        padding: '0.65rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                        animation: 'slide-up 0.25s ease-out',
+                        backdropFilter: 'blur(10px)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                                width: '28px', height: '28px', borderRadius: '50%',
+                                background: 'rgba(56, 189, 248, 0.15)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <Timer size={15} color="var(--accent-color)" className="icon-pulse" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--accent-color)', lineHeight: 1.1 }}>
+                                    {formatTime(timeLeft)} REST
+                                </div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                                    {workout.exercises[timerLocation.exIdx]?.name || 'Next Set'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                            <button
+                                type="button"
+                                onClick={() => adjustTimer(-15)}
+                                style={{
+                                    padding: '0.3rem 0.55rem',
+                                    borderRadius: '8px',
+                                    background: 'var(--muted-color)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-secondary)',
+                                    fontWeight: 800,
+                                    fontSize: '0.65rem',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                -15s
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => adjustTimer(30)}
+                                style={{
+                                    padding: '0.3rem 0.6rem',
+                                    borderRadius: '8px',
+                                    background: 'var(--muted-color)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--accent-color)',
+                                    fontWeight: 800,
+                                    fontSize: '0.65rem',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                +30s
+                            </button>
+                            <button
+                                type="button"
+                                onClick={stopTimer}
+                                style={{
+                                    padding: '0.35rem 0.75rem',
+                                    borderRadius: '8px',
+                                    background: 'var(--accent-color)',
+                                    border: 'none',
+                                    color: 'white',
+                                    fontWeight: 800,
+                                    fontSize: '0.7rem',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(56, 189, 248, 0.3)'
+                                }}
+                            >
+                                SKIP
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div style={{ position: 'fixed', bottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))', left: '1rem', right: '1rem', maxWidth: '800px', margin: '0 auto', zIndex: 1001 }}>
                     <button
